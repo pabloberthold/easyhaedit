@@ -17,6 +17,12 @@ Editor visual de configuración de HAProxy — sitio estático 100% client-side.
    - Versiones de secciones validadas (crt-store → 3.0+, log-profile/traces → 3.1+, acme → 3.2+)
    - 200+ directivas 3.x incluyendo QUIC backend, TLS ECH, KTLS, ACME, QMux, OpenTelemetry, múltiples buffers
 - **Números de línea** en editor raw
+- **BindEditor** — editor estructurado de bind params con toggle de opciones por versión
+- **ServerEditor version-aware** — parámetros de servidor filtrados según versión HAProxy
+- **Duplicación de secciones** — clonar frontend/backend/listen con un click
+- **Búsqueda de secciones** — filtro por nombre en el editor visual
+- **Undo/Redo** — historial de cambios (Ctrl+Z / Ctrl+Shift+Z)
+- **Auto-validate** — Al cambiar versión HAProxy se re-ejecuta validación automáticamente
 - **GitHub Pages** — deploy automatizado via GitHub Actions
 
 ## Uso
@@ -43,7 +49,8 @@ src/
 │   └── haproxy-versions.js    # Perfiles de versión HAProxy 2.4-3.4
 ├── components/
 │   ├── SectionCard.jsx        # Editor visual por sección
-│   ├── ServerEditor.jsx       # Editor de servidores
+│   ├── ServerEditor.jsx       # Editor de servidores (version-aware)
+│   ├── BindEditor.jsx         # Editor estructurado de bind params
 │   ├── ACLEditor.jsx          # Editor de ACLs
 │   ├── HttpRulesEditor.jsx    # Reglas HTTP/TCP
 │   ├── HealthCheckEditor.jsx  # Health checks

@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react'
+import { useState, useEffect, memo, useMemo } from 'react'
 import { Plus, Trash2, Save, ChevronDown, ChevronRight, Shield, Activity } from 'lucide-react'
 
 const EMPTY = {
@@ -11,12 +11,38 @@ const EMPTY = {
   extra_params: [],
 }
 
-function ServerRow({ row, onUpdate, onRemove }) {
+const KNOWN_PARAMS = [
+  'send-proxy', 'send-proxy-v2', 'send-proxy-v2-ssl', 'send-proxy-v2-ssl-cn',
+  'check-send-proxy', 'agent-check', 'agent-inter', 'agent-addr', 'agent-port', 'agent-send',
+  'allow-0rtt', 'non-stick', 'error-limit', 'observe', 'health-check-up', 'health-check-down',
+  'pool-max-conn', 'pool-purge-delay', 'pool-low-conn', 'max-reuse',
+  'log-proto', 'pool-conn-name', 'namespace', 'guid',
+  'init-state', 'sni-auto', 'no-sni-auto', 'check-sni-auto', 'no-check-sni-auto',
+  'tcp-md5sig', 'cc', 'quic-cc-algo',
+  'check-alpn', 'check-proto', 'check-sni', 'check-via-socks4', 'max-session-srv-conns',
+]
+
+function ServerRow({ row, onUpdate, onRemove, feat }) {
   const [expanded, setExpanded] = useState(false)
   const set = (field, value) => onUpdate({ ...row, [field]: value })
 
   const [extraStr, setExtraStr] = useState(() => (row.extra_params || []).join(' '))
   useEffect(() => { setExtraStr((row.extra_params || []).join(' ')) }, [row.name, row.address])
+
+  const availableParams = useMemo(() =>
+    KNOWN_PARAMS.filter(p => feat?.server_params?.has(p)).sort(),
+    [feat]
+  )
+
+  const addParam = (p) => {
+    const current = row.extra_params || []
+    if (!current.includes(p)) {
+      onUpdate({ ...row, extra_params: [...current, p] })
+    }
+  }
+  const removeParam = (p) => {
+    onUpdate({ ...row, extra_params: (row.extra_params || []).filter(x => x !== p) })
+  }
 
   return (
     <div className="border border-slate-200 rounded-lg bg-white overflow-hidden">
@@ -67,101 +93,128 @@ function ServerRow({ row, onUpdate, onRemove }) {
       </div>
 
       {expanded && (
-        <div className="px-4 pb-3 pt-1 border-t border-slate-100 bg-slate-50/50 grid grid-cols-4 gap-3">
-          <div>
-            <label className="label">Weight</label>
-            <input className="input-mono py-1 w-full" type="number" min="0" max="256"
-              placeholder="—" value={row.weight ?? ''}
-              onChange={e => set('weight', e.target.value ? parseInt(e.target.value) : null)}/>
-          </div>
-          <div>
-            <label className="label">maxconn</label>
-            <input className="input-mono py-1 w-full" type="number" min="0"
-              placeholder="—" value={row.maxconn ?? ''}
-              onChange={e => set('maxconn', e.target.value ? parseInt(e.target.value) : null)}/>
-          </div>
-          <div>
-            <label className="label">inter</label>
-            <input className="input-mono py-1 w-full" placeholder="2000ms"
-              value={row.check_inter ?? ''}
-              onChange={e => set('check_inter', e.target.value || null)}/>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
+        <div className="px-4 pb-3 pt-1 border-t border-slate-100 bg-slate-50/50">
+          <div className="grid grid-cols-4 gap-3">
             <div>
-              <label className="label">rise</label>
-              <input className="input-mono py-1 w-full" type="number" min="1"
-                placeholder="—" value={row.check_rise ?? ''}
-                onChange={e => set('check_rise', e.target.value ? parseInt(e.target.value) : null)}/>
+              <label className="label">Weight</label>
+              <input className="input-mono py-1 w-full" type="number" min="0" max="256"
+                placeholder="—" value={row.weight ?? ''}
+                onChange={e => set('weight', e.target.value ? parseInt(e.target.value) : null)}/>
             </div>
             <div>
-              <label className="label">fall</label>
-              <input className="input-mono py-1 w-full" type="number" min="1"
-                placeholder="—" value={row.check_fall ?? ''}
-                onChange={e => set('check_fall', e.target.value ? parseInt(e.target.value) : null)}/>
+              <label className="label">maxconn</label>
+              <input className="input-mono py-1 w-full" type="number" min="0"
+                placeholder="—" value={row.maxconn ?? ''}
+                onChange={e => set('maxconn', e.target.value ? parseInt(e.target.value) : null)}/>
             </div>
-          </div>
-          {row.ssl && <>
             <div>
-              <label className="label">verify</label>
+              <label className="label">inter</label>
+              <input className="input-mono py-1 w-full" placeholder="2000ms"
+                value={row.check_inter ?? ''}
+                onChange={e => set('check_inter', e.target.value || null)}/>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="label">rise</label>
+                <input className="input-mono py-1 w-full" type="number" min="1"
+                  placeholder="—" value={row.check_rise ?? ''}
+                  onChange={e => set('check_rise', e.target.value ? parseInt(e.target.value) : null)}/>
+              </div>
+              <div>
+                <label className="label">fall</label>
+                <input className="input-mono py-1 w-full" type="number" min="1"
+                  placeholder="—" value={row.check_fall ?? ''}
+                  onChange={e => set('check_fall', e.target.value ? parseInt(e.target.value) : null)}/>
+              </div>
+            </div>
+            {row.ssl && <>
+              <div>
+                <label className="label">verify</label>
+                <select className="input text-xs py-1 w-full"
+                  value={row.verify ?? ''}
+                  onChange={e => set('verify', e.target.value || null)}>
+                  <option value="">—</option>
+                  <option value="none">none</option>
+                  <option value="required">required</option>
+                </select>
+              </div>
+              <div className="col-span-3">
+                <label className="label">sni</label>
+                <input className="input-mono py-1 w-full" placeholder="req.hdr(Host)"
+                  value={row.sni ?? ''}
+                  onChange={e => set('sni', e.target.value || null)}/>
+              </div>
+            </>}
+            <div>
+              <label className="label">on-error</label>
               <select className="input text-xs py-1 w-full"
-                value={row.verify ?? ''}
-                onChange={e => set('verify', e.target.value || null)}>
+                value={row.on_error ?? ''}
+                onChange={e => set('on_error', e.target.value || null)}>
                 <option value="">—</option>
-                <option value="none">none</option>
-                <option value="required">required</option>
+                <option value="fastinter">fastinter</option>
+                <option value="fail-check">fail-check</option>
+                <option value="sudden-death">sudden-death</option>
+                <option value="mark-down">mark-down</option>
               </select>
             </div>
-            <div className="col-span-3">
-              <label className="label">sni</label>
-              <input className="input-mono py-1 w-full" placeholder="req.hdr(Host)"
-                value={row.sni ?? ''}
-                onChange={e => set('sni', e.target.value || null)}/>
+            <div>
+              <label className="label">resolvers</label>
+              <input className="input-mono py-1 w-full" placeholder="mydns"
+                value={row.resolvers ?? ''}
+                onChange={e => set('resolvers', e.target.value || null)}/>
             </div>
-          </>}
-          <div>
-            <label className="label">on-error</label>
-            <select className="input text-xs py-1 w-full"
-              value={row.on_error ?? ''}
-              onChange={e => set('on_error', e.target.value || null)}>
-              <option value="">—</option>
-              <option value="fastinter">fastinter</option>
-              <option value="fail-check">fail-check</option>
-              <option value="sudden-death">sudden-death</option>
-              <option value="mark-down">mark-down</option>
-            </select>
+            <div>
+              <label className="label">track</label>
+              <input className="input-mono py-1 w-full" placeholder="be/srv"
+                value={row.track ?? ''}
+                onChange={e => set('track', e.target.value || null)}/>
+            </div>
+            <div>
+              <label className="label">init-addr</label>
+              <input className="input-mono py-1 w-full" placeholder="libc,none"
+                value={row.init_addr ?? ''}
+                onChange={e => set('init_addr', e.target.value || null)}/>
+            </div>
           </div>
-          <div>
-            <label className="label">resolvers</label>
-            <input className="input-mono py-1 w-full" placeholder="mydns"
-              value={row.resolvers ?? ''}
-              onChange={e => set('resolvers', e.target.value || null)}/>
-          </div>
-          <div>
-            <label className="label">track</label>
-            <input className="input-mono py-1 w-full" placeholder="be/srv"
-              value={row.track ?? ''}
-              onChange={e => set('track', e.target.value || null)}/>
-          </div>
-          <div>
-            <label className="label">init-addr</label>
-            <input className="input-mono py-1 w-full" placeholder="libc,none"
-              value={row.init_addr ?? ''}
-              onChange={e => set('init_addr', e.target.value || null)}/>
-          </div>
-          <div className="col-span-4">
+
+          <div className="mt-3">
             <label className="label">Extra params</label>
             <input className="input-mono py-1 w-full" placeholder="send-proxy observe layer7"
               value={extraStr}
               onChange={e => setExtraStr(e.target.value)}
               onBlur={e => set('extra_params', e.target.value.trim() ? e.target.value.trim().split(/\s+/) : [])}/>
           </div>
+
+          {availableParams.length > 0 && (
+            <details className="mt-2 text-xs text-slate-400">
+              <summary className="cursor-pointer hover:text-slate-600 font-medium">
+                Available params for HAProxy {feat?._version}
+              </summary>
+              <div className="mt-1 flex flex-wrap gap-1 max-h-28 overflow-y-auto border border-slate-200 rounded p-1.5 bg-white">
+                {availableParams.map(p => {
+                  const active = (row.extra_params || []).includes(p)
+                  return (
+                    <button key={p}
+                      className={`text-[10px] font-mono px-2 py-0.5 rounded transition-colors ${
+                        active
+                          ? 'bg-brand-100 text-brand-700'
+                          : 'bg-slate-50 text-slate-500 hover:bg-brand-50 hover:text-brand-600'
+                      }`}
+                      onClick={() => active ? removeParam(p) : addParam(p)}>
+                      {p}
+                    </button>
+                  )
+                })}
+              </div>
+            </details>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-function ServerEditor({ servers = [], onChange }) {
+function ServerEditor({ servers = [], onChange, feat }) {
   const [rows, setRows] = useState(() => servers.map((s, i) => ({ ...EMPTY, ...s, _id: i })))
   const [nextId, setNextId] = useState(servers.length)
   const [dirty, setDirty] = useState(false)
@@ -215,7 +268,7 @@ function ServerEditor({ servers = [], onChange }) {
             <span>check</span><span>ssl</span><span>bkp</span><span>dis</span><span/>
           </div>
           {rows.map(row => (
-            <ServerRow key={row._id} row={row}
+            <ServerRow key={row._id} row={row} feat={feat}
               onUpdate={updated => updateRow(row._id, updated)}
               onRemove={() => removeRow(row._id)}
             />
@@ -228,5 +281,6 @@ function ServerEditor({ servers = [], onChange }) {
 
 export default memo(ServerEditor, (prev, next) =>
   JSON.stringify(prev.servers) === JSON.stringify(next.servers) &&
-  prev.onChange === next.onChange
+  prev.onChange === next.onChange &&
+  prev.feat?._version === next.feat?._version
 )

@@ -38,7 +38,7 @@ backend web_backend
     server web01 10.0.0.1:80 check
 `
 
-const APP_VERSION = '1.3.0'
+const APP_VERSION = '1.4.0'
 const LOCAL_SESSION_KEY = 'easyhaedit_local_cfg'
 
 function Notification({ notif }) {
@@ -74,13 +74,24 @@ function EmptySection({ label }) {
 
 // ── ConfigEditor ──────────────────────────────────────────────────────────
 
-function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, setDirty, haVersion, onVersionChange }) {
+function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, setDirty, haVersion, onVersionChange, canUndo, canRedo, onUndo, onRedo }) {
   const [tab, setTab] = useState('editor')
   const [parseError, setParseError] = useState(null)
   const [validationResult, setValidationResult] = useState(null)
   const [validating, setValidating] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [sectionFilter, setSectionFilter] = useState('')
   const validationPanelRef = useRef(null)
+
+  // Auto-validate when version changes
+  useEffect(() => {
+    if (rawCfg && rawCfg.trim()) {
+      setValidating(true)
+      const res = validateConfigText(rawCfg, haVersion)
+      setValidating(false)
+      setValidationResult(res)
+    }
+  }, [haVersion])
 
   const handleParse = useCallback(async () => {
     setLoading(true); setParseError(null)
@@ -162,12 +173,29 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
     setConfig({ ...config, [key]: [...existing, ns] }); if (setDirty) setDirty(true)
   }, [config, setDirty])
 
+  const duplicateSection = useCallback((type, idx) => {
+    if (!config) return
+    const key = `${type}s`
+    const arr = [...(config[key] || [])]
+    const orig = arr[idx]
+    const newSection = JSON.parse(JSON.stringify(orig))
+    newSection.name = `${orig.name}_copy`
+    arr.splice(idx + 1, 0, newSection)
+    setConfig({ ...config, [key]: arr }); if (setDirty) setDirty(true)
+  }, [config, setDirty])
+
   const removeSection = useCallback((type, idx) => {
     if (!config) return
     const key = `${type}s`
     const arr = [...(config[key] || [])]; arr.splice(idx, 1)
     setConfig({ ...config, [key]: arr }); if (setDirty) setDirty(true)
   }, [config, setDirty])
+
+  const matchFilter = (s) => !sectionFilter || (s.name || '').toLowerCase().includes(sectionFilter.toLowerCase())
+
+  const filteredFrontends = useMemo(() => (config?.frontends || []).map((s,i) => ({s,i})).filter(({s}) => matchFilter(s)).map(({s,i}) => ({...s, _origIdx: i})), [config, sectionFilter])
+  const filteredBackends  = useMemo(() => (config?.backends  || []).map((s,i) => ({s,i})).filter(({s}) => matchFilter(s)).map(({s,i}) => ({...s, _origIdx: i})), [config, sectionFilter])
+  const filteredListens   = useMemo(() => (config?.listens   || []).map((s,i) => ({s,i})).filter(({s}) => matchFilter(s)).map(({s,i}) => ({...s, _origIdx: i})), [config, sectionFilter])
 
   const stats = config ? {
     frontends: config.frontends?.length || 0,
@@ -207,13 +235,21 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
           {validating ? <RefreshCw size={13} className="animate-spin"/> : <Terminal size={13}/>} Validate
         </button>
         {config && (
-          <button className="btn-sm btn-secondary" onClick={handleSerialize}>
-            <RefreshCw size={13}/> Save
+          <button className="btn-sm btn-secondary" onClick={handleSerialize} title="Serialize visual editor config back to raw text">
+            <RefreshCw size={13}/> ⟶ Raw
           </button>
         )}
         <button className="btn-sm btn-secondary" onClick={handleDownload}>
           <Download size={13}/> Download
         </button>
+        <div className="flex items-center gap-1">
+          <button className={`btn-sm ${canUndo ? 'btn-secondary' : 'btn-disabled'}`} onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+            ↩
+          </button>
+          <button className={`btn-sm ${canRedo ? 'btn-secondary' : 'btn-disabled'}`} onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
+            ↪
+          </button>
+        </div>
         {dirty && <span className="ml-auto text-[11px] text-amber-500 font-medium">● Unsaved changes</span>}
       </div>
 
@@ -300,6 +336,23 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
 
         {tab === 'editor' && (
           <div className="space-y-4">
+            {config && (
+              <div className="flex items-center gap-3 mb-2">
+                <div className="relative flex-1 max-w-xs">
+                  <input className="input-mono py-1.5 pl-7 w-full text-xs"
+                    placeholder="Filter sections by name…"
+                    value={sectionFilter}
+                    onChange={e => setSectionFilter(e.target.value)}
+                  />
+                  <svg className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={12} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                </div>
+                {sectionFilter && (
+                  <button className="text-xs text-slate-400 hover:text-slate-600" onClick={() => setSectionFilter('')}>
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
             {parseError && (
               <div className="card border-l-2 border-l-red-400 p-4">
                 <pre className="text-xs font-mono text-red-600 whitespace-pre-wrap">{parseError}</pre>
@@ -351,17 +404,17 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
                     </div>
                   ))}
                 </div>
-                <SectionGroup label="Frontends" icon={Globe} color="text-blue-600" count={config.frontends?.length||0} onAdd={() => addSection('frontend')}>
-                  {config.frontends?.map((fe,i) => <SectionCard key={`fe-${i}`} type="frontend" section={fe} onUpdate={u=>updateSection('frontend',i,u)} onRemove={()=>removeSection('frontend',i)} haVersion={haVersion}/>)}
-                  {!config.frontends?.length && <EmptySection label="No frontends — click Add"/>}
+                <SectionGroup label="Frontends" icon={Globe} color="text-blue-600" count={filteredFrontends.length} onAdd={() => addSection('frontend')}>
+                  {filteredFrontends.map((fe,i) => <SectionCard key={`fe-${fe._origIdx}`} type="frontend" section={fe} onUpdate={u=>updateSection('frontend',fe._origIdx,u)} onRemove={()=>removeSection('frontend',fe._origIdx)} onDuplicate={()=>duplicateSection('frontend',fe._origIdx)} haVersion={haVersion}/>)}
+                  {!filteredFrontends.length && <EmptySection label="No frontends — click Add"/>}
                 </SectionGroup>
-                <SectionGroup label="Backends" icon={Server} color="text-emerald-600" count={config.backends?.length||0} onAdd={() => addSection('backend')}>
-                  {config.backends?.map((be,i) => <SectionCard key={`be-${i}`} type="backend" section={be} onUpdate={u=>updateSection('backend',i,u)} onRemove={()=>removeSection('backend',i)} haVersion={haVersion}/>)}
-                  {!config.backends?.length && <EmptySection label="No backends — click Add"/>}
+                <SectionGroup label="Backends" icon={Server} color="text-emerald-600" count={filteredBackends.length} onAdd={() => addSection('backend')}>
+                  {filteredBackends.map((be,i) => <SectionCard key={`be-${be._origIdx}`} type="backend" section={be} onUpdate={u=>updateSection('backend',be._origIdx,u)} onRemove={()=>removeSection('backend',be._origIdx)} onDuplicate={()=>duplicateSection('backend',be._origIdx)} haVersion={haVersion}/>)}
+                  {!filteredBackends.length && <EmptySection label="No backends — click Add"/>}
                 </SectionGroup>
-                <SectionGroup label="Listen" icon={Settings} color="text-purple-600" count={config.listens?.length||0} onAdd={() => addSection('listen')}>
-                  {config.listens?.map((ls,i) => <SectionCard key={`ls-${i}`} type="listen" section={ls} onUpdate={u=>updateSection('listen',i,u)} onRemove={()=>removeSection('listen',i)} haVersion={haVersion}/>)}
-                  {!config.listens?.length && <EmptySection label="No listen sections — click Add"/>}
+                <SectionGroup label="Listen" icon={Settings} color="text-purple-600" count={filteredListens.length} onAdd={() => addSection('listen')}>
+                  {filteredListens.map((ls,i) => <SectionCard key={`ls-${ls._origIdx}`} type="listen" section={ls} onUpdate={u=>updateSection('listen',ls._origIdx,u)} onRemove={()=>removeSection('listen',ls._origIdx)} onDuplicate={()=>duplicateSection('listen',ls._origIdx)} haVersion={haVersion}/>)}
+                  {!filteredListens.length && <EmptySection label="No listen sections — click Add"/>}
                 </SectionGroup>
               </>
             )}
@@ -380,8 +433,63 @@ export default function App() {
   const [rawCfg, setRawCfg] = useState(() => {
     try { return sessionStorage.getItem(LOCAL_SESSION_KEY) || SAMPLE_CFG } catch { return SAMPLE_CFG }
   })
-  const [config, setConfig] = useState(null)
+  const [config, rawSetConfig] = useState(null)
   const [dirty, setDirty] = useState(false)
+  const histRef = useRef([])
+  const histPosRef = useRef(-1)
+  const [canUndo, setCanUndo] = useState(false)
+  const [canRedo, setCanRedo] = useState(false)
+
+  const pushHistory = useCallback((cfg) => {
+    const h = histRef.current
+    const pos = histPosRef.current
+    const trimmed = h.slice(0, pos + 1)
+    trimmed.push(JSON.parse(JSON.stringify(cfg)))
+    if (trimmed.length > 100) trimmed.shift()
+    histRef.current = trimmed
+    histPosRef.current = trimmed.length - 1
+    setCanUndo(trimmed.length > 1)
+    setCanRedo(false)
+  }, [])
+
+  const setConfig = useCallback((val) => {
+    rawSetConfig(prev => {
+      const next = typeof val === 'function' ? val(prev) : val
+      if (next !== prev) pushHistory(next)
+      return next
+    })
+  }, [pushHistory])
+
+  const undo = useCallback(() => {
+    const pos = histPosRef.current
+    if (pos <= 0) return
+    histPosRef.current = pos - 1
+    rawSetConfig(histRef.current[pos - 1])
+    setCanUndo(histPosRef.current > 0)
+    setCanRedo(true)
+  }, [])
+
+  const redo = useCallback(() => {
+    const h = histRef.current
+    const pos = histPosRef.current
+    if (pos >= h.length - 1) return
+    histPosRef.current = pos + 1
+    rawSetConfig(h[pos + 1])
+    setCanUndo(true)
+    setCanRedo(pos + 1 < h.length - 1)
+  }, [])
+
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault()
+        if (e.shiftKey) redo()
+        else undo()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [undo, redo])
   const [notif, setNotif] = useState(null)
   const [darkMode, setDarkMode] = useState(() => {
     try { return localStorage.getItem('easyhaedit_theme') === 'dark' } catch { return false }
@@ -467,6 +575,7 @@ export default function App() {
           notify={notify}
           dirty={dirty} setDirty={setDirty}
           haVersion={haVersion} onVersionChange={setHaVersion}
+          canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo}
         />
 
         {/* Footer */}

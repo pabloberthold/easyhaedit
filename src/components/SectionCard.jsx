@@ -3,7 +3,7 @@ import {
   ChevronDown, ChevronRight, Trash2,
   Globe, Server, Settings, List,
   Activity, Database, Clock, SlidersHorizontal, FileCode,
-  Maximize2, Minimize2
+  Maximize2, Minimize2, Copy
 } from 'lucide-react'
 import { getVersionData } from '../lib/haproxy-versions.js'
 import ACLEditor        from './ACLEditor'
@@ -12,6 +12,7 @@ import HttpRulesEditor  from './HttpRulesEditor'
 import HealthCheckEditor from './HealthCheckEditor'
 import PersistenceEditor from './PersistenceEditor'
 import TimeoutsEditor   from './TimeoutsEditor'
+import BindEditor       from './BindEditor'
 
 const TYPE_BADGE = {
   frontend: 'badge-fe',
@@ -196,20 +197,11 @@ function EditorPanel({ type, section, onUpdate, visibleTabs, activeTab, setActiv
 
             <div className="grid grid-cols-2 gap-4">
               {type !== 'backend' && (
-                <div>
-                  <label className="label">
-                    Bind <span className="text-slate-400 font-normal">(one per line)</span>
-                  </label>
-                  <textarea
-                    className="input-mono w-full min-h-[64px] resize-none text-xs"
-                    placeholder={"*:80\n*:443 ssl crt /etc/ssl/cert.pem"}
-                    value={(section.bind || []).join('\n')}
-                    onChange={e => onUpdate({
-                      ...section,
-                      bind: e.target.value.split('\n').map(s => s.trim()).filter(Boolean)
-                    })}
-                  />
-                </div>
+                <BindEditor
+                  bind={section.bind || []}
+                  onChange={bind => onUpdate({ ...section, bind })}
+                  feat={feat}
+                />
               )}
 
               <div className="space-y-3">
@@ -280,6 +272,7 @@ function EditorPanel({ type, section, onUpdate, visibleTabs, activeTab, setActiv
               <ServerEditor
                 servers={section.servers || []}
                 onChange={servers => onUpdate({ ...section, servers })}
+                feat={feat}
               />
             )}
 
@@ -343,7 +336,7 @@ function EditorPanel({ type, section, onUpdate, visibleTabs, activeTab, setActiv
   )
 }
 
-function SectionCard({ type, section, onUpdate, onRemove, haVersion }) {
+function SectionCard({ type, section, onUpdate, onRemove, onDuplicate, haVersion }) {
   const [open, setOpen]           = useState(false)
   const [expanded, setExpanded]   = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
@@ -422,6 +415,15 @@ function SectionCard({ type, section, onUpdate, onRemove, haVersion }) {
               {expanded ? <Minimize2 size={12}/> : <Maximize2 size={12}/>}
             </button>
 
+            {onDuplicate && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onDuplicate() }}
+                className="p-1 rounded text-slate-300 hover:text-brand-500 hover:bg-brand-50 transition-all"
+                title="Duplicate section"
+              >
+                <Copy size={12}/>
+              </button>
+            )}
             {onRemove && (
               <button
                 onClick={handleDelete}
@@ -484,5 +486,6 @@ export default memo(SectionCard, (prev, next) =>
   prev.type === next.type &&
   prev.onUpdate === next.onUpdate &&
   prev.onRemove === next.onRemove &&
+  prev.onDuplicate === next.onDuplicate &&
   prev.haVersion === next.haVersion
 )

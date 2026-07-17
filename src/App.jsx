@@ -10,6 +10,7 @@ import FlowDiagram from './components/FlowDiagram'
 import { parseConfigText, parseConfigFile } from './lib/haproxy-parser.js'
 import { serializeConfig } from './lib/haproxy-serializer.js'
 import { validateConfigText } from './lib/haproxy-validator.js'
+import { HAPROXY_VERSIONS, DEFAULT_VERSION } from './lib/haproxy-versions.js'
 
 const SAMPLE_CFG = `global
     log /dev/log local0
@@ -73,7 +74,7 @@ function EmptySection({ label }) {
 
 // ── ConfigEditor ──────────────────────────────────────────────────────────
 
-function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, setDirty }) {
+function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, setDirty, haVersion, onVersionChange }) {
   const [tab, setTab] = useState('editor')
   const [parseError, setParseError] = useState(null)
   const [validationResult, setValidationResult] = useState(null)
@@ -114,7 +115,7 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
 
   const handleValidate = () => {
     setValidating(true)
-    const res = validateConfigText(rawCfg)
+    const res = validateConfigText(rawCfg, haVersion)
     setValidating(false)
     setValidationResult(res)
     if (!res.valid) {
@@ -194,6 +195,14 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
         <button className="btn-sm btn-secondary" onClick={handleParse} disabled={loading}>
           {loading ? <RefreshCw size={13} className="animate-spin"/> : <Eye size={13}/>} Parse
         </button>
+        <select
+          className="btn-sm btn-secondary text-xs font-mono cursor-pointer"
+          value={haVersion}
+          onChange={e => onVersionChange(e.target.value)}
+          title="HAProxy version for validation"
+        >
+          {HAPROXY_VERSIONS.map(v => <option key={v} value={v}>HAProxy {v}</option>)}
+        </select>
         <button className="btn-sm btn-secondary" onClick={handleValidate} disabled={validating}>
           {validating ? <RefreshCw size={13} className="animate-spin"/> : <Terminal size={13}/>} Validate
         </button>
@@ -362,6 +371,9 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(() => {
     try { return localStorage.getItem('easyhaedit_theme') === 'dark' } catch { return false }
   })
+  const [haVersion, setHaVersion] = useState(() => {
+    try { return localStorage.getItem('easyhaedit_version') || DEFAULT_VERSION } catch { return DEFAULT_VERSION }
+  })
 
   useEffect(() => {
     const html = document.documentElement
@@ -372,6 +384,10 @@ export default function App() {
   useEffect(() => {
     try { sessionStorage.setItem(LOCAL_SESSION_KEY, rawCfg) } catch {}
   }, [rawCfg])
+
+  useEffect(() => {
+    try { localStorage.setItem('easyhaedit_version', haVersion) } catch {}
+  }, [haVersion])
 
   // Auto-parse session config on mount
   useEffect(() => {
@@ -435,11 +451,12 @@ export default function App() {
           config={config} setConfig={setConfig}
           notify={notify}
           dirty={dirty} setDirty={setDirty}
+          haVersion={haVersion} onVersionChange={setHaVersion}
         />
 
         {/* Footer */}
         <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-6 py-2 shrink-0 flex items-center justify-between">
-          <span className="text-[11px] text-slate-400">v{APP_VERSION}</span>
+          <span className="text-[11px] text-slate-400">v{APP_VERSION} · HAProxy {haVersion}</span>
           <span className="text-[11px] text-slate-400">Coding by <a href="https://github.com/pabloberthold" target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:text-brand-700 transition-colors">pabloberthold</a></span>
         </footer>
       </div>

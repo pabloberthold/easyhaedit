@@ -1,6 +1,8 @@
+import { getVersionData, HAPROXY_VERSIONS } from './haproxy-versions.js'
+
 const SECTION_RE = /^\s*(global|defaults|frontend|backend|listen|resolvers|peers|userlist|program)\s*(.*?)\s*$/
 
-const VALID_BALANCE = new Set([
+let VALID_BALANCE = new Set([
   'roundrobin', 'leastconn', 'source', 'random', 'uri', 'hdr',
   'rdp-cookie', 'first', 'static-rr',
 ])
@@ -138,7 +140,7 @@ const BACKEND_ONLY = new Set(['server', 'server-template'])
 
 const LISTEN_ALLOWED = new Set(['bind', 'server', 'server-template'])
 
-function validateBind(lineNum, line, issues) {
+function validateBind(lineNum, line, issues, feat) {
   const rest = line.slice(5).trim()
   if (!rest) {
     issues.push({ line: lineNum, severity: 'error', message: 'bind directive missing address:port or path' })
@@ -157,32 +159,21 @@ function validateBind(lineNum, line, issues) {
       issues.push({ line: lineNum, severity: 'error', message: `bind: invalid port '${portStr}' in '${addr}'` })
     }
     const params = parts.slice(1)
-    validateBindParams(lineNum, params, issues)
+    validateBindParams(lineNum, params, issues, feat)
   } else if (addr === '*') {
     issues.push({ line: lineNum, severity: 'error', message: 'bind * requires a port (e.g. *:80)' })
   }
 }
 
-function validateBindParams(lineNum, params, issues) {
+function validateBindParams(lineNum, params, issues, feat) {
   let i = 0
-  const known = new Set([
-    'accept-nproxy', 'accept-proxy', 'allow-0rtt', 'alpn', 'backlog',
-    'ca-file', 'ca-ignore-err', 'ca-sign-file', 'ca-sign-pass', 'ccas',
-    'ciphers', 'ciphersuites', 'crl-file', 'crl-ignore-err', 'crt',
-    'crt-ignore-err', 'crt-list', 'curves', 'defer-accept', 'ecdhe',
-    'expose-fd', 'force-sslv3', 'force-tlsv10', 'force-tlsv11',
-    'force-tlsv12', 'force-tlsv13', 'generate-certificates',
-    'gid', 'group', 'id', 'interface', 'level', 'maxconn', 'mode',
-    'mss', 'name', 'nice', 'no-sslv3', 'no-tlsv10', 'no-tlsv11',
-    'no-tlsv12', 'no-tlsv13', 'npn', 'prefer-client-ciphers',
-    'process', 'protect', 'proto', 'ssl', 'strict-sni', 'tcp-ut',
-    'tfo', 'thread', 'transparent', 'uid', 'user', 'verify',
-    'v4v6', 'v6only', 'quic', 'quic-cc-algo', 'quic-force-retry',
-    'quic-retry-impact-key',
-  ])
   while (i < params.length) {
     const p = params[i]
-    if (!p.startsWith('ssl') && known.has(p) && i + 1 < params.length) {
+    if (!p.startsWith('ssl') && feat.bind_params.has(p) && i + 1 < params.length) {
+      if (['quic', 'quic-cc-algo', 'quic-force-retry', 'quic-retry-impact-key', 'quic-socket'].includes(p) &&
+          !feat.bind_params.has(p)) {
+        issues.push({ line: lineNum, severity: 'warning', message: `bind: '${p}' requires HAProxy ${feat._version}+` })
+      }
       i += 2
     } else {
       i++
@@ -190,7 +181,7 @@ function validateBindParams(lineNum, params, issues) {
   }
 }
 
-function validateServer(lineNum, line, issues) {
+function validateServer(lineNum, line, issues, feat) {
   const parts = line.split(/\s+/)
   if (parts.length < 3) {
     issues.push({ line: lineNum, severity: 'error', message: 'server: missing name and/or address:port' })
@@ -217,18 +208,32 @@ function validateServer(lineNum, line, issues) {
   }
 
   const params = parts.slice(3)
+  const needsVal = new Set([
+    'weight', 'maxconn', 'maxqueue', 'minconn', 'pool-max-conn',
+    'max-session-srv-conns', 'inter', 'fastinter', 'downinter',
+    'rise', 'fall',
+  ])
+  const noVal = new Set([
+    'check', 'no-check', 'ssl', 'no-ssl', 'backup', 'disabled', 'no-backup',
+    'no-sni', 'non-stick', 'check-ssl', 'no-check-ssl',
+    'health-check-up', 'health-check-down', 'observe',
+    'send-proxy', 'send-proxy-v2', 'send-proxy-v2-ssl', 'send-proxy-v2-ssl-cn',
+  ])
+
   let i = 0
   while (i < params.length) {
     const p = params[i].toLowerCase()
-    if (p === 'check') i++
-    else if (p === 'no-check') i++
-    else if (p === 'ssl') i++
-    else if (p === 'no-ssl') i++
-    else if (p === 'backup') i++
-    else if (p === 'disabled') i++
-    else if (p === 'no-backup') i++
-    else if (p === 'weight' || p === 'maxconn' || p === 'maxqueue' ||
-             p === 'minconn' || p === 'pool-max-conn' || p === 'max-session-srv-conn') {
+
+    if (noVal.has(p)) {
+      if (!feat.server_params.has(p)) {
+        issues.push({ line: lineNum, severity: 'warning', message: `server '${name}': '${p}' requires HAProxy ${feat._version}+` })
+      }
+      i++
+    }
+    else if (needsVal.has(p)) {
+      if (!feat.server_params.has(p)) {
+        issues.push({ line: lineNum, severity: 'warning', message: `server '${name}': '${p}' requires HAProxy ${feat._version}+` })
+      }
       if (i + 1 >= params.length) {
         issues.push({ line: lineNum, severity: 'error', message: `server '${name}': ${p} requires a value` })
         i++
@@ -237,15 +242,6 @@ function validateServer(lineNum, line, issues) {
         if (isNaN(n) || n < 0) {
           issues.push({ line: lineNum, severity: 'warning', message: `server '${name}': ${p} should be a positive number` })
         }
-        i += 2
-      }
-    }
-    else if (p === 'inter' || p === 'fastinter' || p === 'downinter' ||
-             p === 'rise' || p === 'fall') {
-      if (i + 1 >= params.length) {
-        issues.push({ line: lineNum, severity: 'error', message: `server '${name}': ${p} requires a value` })
-        i++
-      } else {
         i += 2
       }
     }
@@ -273,36 +269,12 @@ function validateServer(lineNum, line, issues) {
         i += 2
       }
     }
-    else if (p === 'resolvers' || p === 'sni' || p === 'init-addr' ||
-             p === 'id' || p === 'cookie' || p === 'redir' ||
-             p === 'addr' || p === 'source' || p === 'stick' ||
-             p === 'send-proxy' || p === 'send-proxy-v2' ||
-             p === 'send-proxy-v2-ssl' || p === 'send-proxy-v2-ssl-cn' ||
-             p === 'agent-check' || p === 'agent-inter' ||
-             p === 'agent-addr' || p === 'agent-port' ||
-             p === 'agent-send' || p === 'allow-0rtt' ||
-             p === 'check-send-proxy' || p === 'check-via-socks4' ||
-             p === 'crl-file' || p === 'crt' || p === 'ca-file' ||
-             p === 'ciphers' || p === 'ciphersuites' ||
-             p === 'force-sslv3' || p === 'force-tlsv10' ||
-             p === 'force-tlsv11' || p === 'force-tlsv12' ||
-             p === 'force-tlsv13' || p === 'no-sslv3' ||
-             p === 'no-tlsv10' || p === 'no-tlsv11' ||
-             p === 'no-tlsv12' || p === 'no-tlsv13' ||
-             p === 'no-sni' || p === 'non-stick' ||
-             p === 'check-ssl' || p === 'no-check-ssl' ||
-             p === 'proto' || p === 'namespace' ||
-             p === 'log-proto' || p === 'max-reuse' ||
-             p === 'pool-purge-delay' || p === 'pool-low-conn') {
+    else if (feat.server_params.has(p)) {
       if (i + 1 >= params.length) { i++ }
       else i += 2
     }
-    else if (p === 'health-check-up' || p === 'health-check-down' ||
-             p === 'observe') {
-      i++
-    }
     else {
-      issues.push({ line: lineNum, severity: 'warning', message: `server '${name}': unknown parameter '${params[i]}'` })
+      issues.push({ line: lineNum, severity: 'warning', message: `server '${name}': unknown parameter '${params[i]}' for HAProxy ${feat._version}` })
       i++
     }
   }
@@ -314,13 +286,13 @@ function validateMode(lineNum, mode, issues) {
   }
 }
 
-function validateBalance(lineNum, bal, issues) {
+function validateBalance(lineNum, bal, issues, feat) {
   const val = bal.toLowerCase()
   if (val.startsWith('uri ')) return
   if (val.startsWith('hdr(')) return
   if (val.startsWith('rdp-cookie(')) return
-  if (!VALID_BALANCE.has(val)) {
-    issues.push({ line: lineNum, severity: 'warning', message: `Unknown balance algorithm '${bal}'. Valid: ${[...VALID_BALANCE].join(', ')}` })
+  if (!feat.balance.has(val)) {
+    issues.push({ line: lineNum, severity: 'warning', message: `Unknown balance algorithm '${bal}' for HAProxy ${feat._version || 'this version'}` })
   }
 }
 
@@ -338,25 +310,10 @@ function validateACL(lineNum, rest, issues) {
   }
 }
 
-function validateHttpRequestRule(lineNum, rest, issues) {
-  const actions = new Set([
-    'allow', 'deny', 'redirect', 'add-header', 'set-header', 'del-header',
-    'replace-header', 'replace-value', 'set-nice', 'set-log-level',
-    'set-tos', 'set-mark', 'set-uri', 'set-path', 'set-query',
-    'set-method', 'set-src', 'set-dst', 'set-dst-port',
-    'cache-use', 'sc-add-gpc', 'sc-inc-gpc', 'sc-inc-gpc0',
-    'sc-inc-gpc1', 'sc-set-gpt0', 'sc-set-gpt1', 'send-spoe-group',
-    'set-timeout', 'early-hint', 'disable-l7-retry',
-    'set-map', 'del-map', 'set-var', 'unset-var',
-    'track-sc0', 'track-sc1', 'track-sc2',
-    'capture', 'silent-drop', 'reject', 'return',
-    'wait-for-handshake', 'wait-for-body',
-    'use-service', 'do-resolve', 'check-fields',
-    'set-bandwith-limit',
-  ])
+function validateHttpRequestRule(lineNum, rest, issues, feat) {
   const action = rest.split(/\s+/)[0].toLowerCase()
-  if (!actions.has(action)) {
-    issues.push({ line: lineNum, severity: 'warning', message: `http-request: unknown action '${action}'` })
+  if (!feat.http_request_actions.has(action)) {
+    issues.push({ line: lineNum, severity: 'warning', message: `http-request: unknown action '${action}' for HAProxy ${feat._version}` })
   }
   if (!rest || rest.trim().length === 0) {
     issues.push({ line: lineNum, severity: 'error', message: 'http-request: missing action' })
@@ -439,32 +396,16 @@ function validateStickTable(lineNum, rest, issues) {
   }
 }
 
-function validateOption(lineNum, sectionType, option, issues) {
+function validateOption(lineNum, sectionType, option, issues, feat) {
   const opt = option.split(/\s+/)[0].toLowerCase()
-
-  const knownOptions = new Set([
-    'abortonclose', 'accept-invalid-http-request', 'accept-invalid-http-response',
-    'allbackups', 'backups', 'checkcache', 'clitcpka', 'close',
-    'contstats', 'dontlognull', 'dontlog-normal', 'forceclose',
-    'forwardfor', 'http-pretend-keepalive', 'http-proxy',
-    'http-no-delay', 'http-use-htx', 'http-keep-alive', 'http-tunnel',
-    'http-restrict-req-hdr-names', 'httpchk', 'httplog', 'http-server-close',
-    'independent-streams', 'ldap-check', 'log-health-checks',
-    'log-separate-errors', 'logasap', 'mysql-check', 'nolinger',
-    'originalto', 'persist', 'pgsql-check', 'mysql-check',
-    'redispatch', 'redis-check', 'redis-check', 'smtpchk',
-    'socket-stats', 'ssl-hello-chk', 'srvtcpka', 'standalone',
-    'tcp-check', 'tcp-smart-accept', 'tcp-smart-connect', 'tcplog',
-    'transparent',
-  ])
 
   const healthOptions = new Set([
     'httpchk', 'smtpchk', 'mysql-check', 'pgsql-check', 'redis-check',
     'ssl-hello-chk', 'tcp-check', 'ldap-check',
   ])
 
-  if (!knownOptions.has(opt)) {
-    issues.push({ line: lineNum, severity: 'warning', message: `Unknown option '${option.split(/\s+/)[0]}'` })
+  if (!feat.options.has(opt)) {
+    issues.push({ line: lineNum, severity: 'warning', message: `Unknown option '${option.split(/\s+/)[0]}' for HAProxy ${feat._version}` })
   }
 
   if (opt === 'forwardfor') {
@@ -747,11 +688,12 @@ function validateGlobalDirective(lineNum, directive, rest, issues) {
   }
 }
 
-export function validateConfigText(text) {
+export function validateConfigText(text, version = '2.9') {
   const issues = []
   const sections = splitSections(text)
   const knownBackends = new Set()
   const namedSections = { frontends: [], backends: [], listens: [] }
+  const feat = getVersionData(version)
 
   if (!sections.length) {
     return { valid: false, message: 'No HAProxy sections found', issues: [] }
@@ -841,21 +783,21 @@ export function validateConfigText(text) {
         issues.push({ line: lineNum, severity: 'warning', message: 'default_backend in a backend section has no effect' })
       }
       else if (k === 'use_backend') validateUseBackend(lineNum, rest, issues, knownBackends)
-      else if (k === 'server') validateServer(lineNum, line, issues)
+      else if (k === 'server') validateServer(lineNum, line, issues, feat)
       else if (k === 'server-template') validateServerTemplate(lineNum, line, issues)
-      else if (k === 'bind') validateBind(lineNum, line, issues)
+      else if (k === 'bind') validateBind(lineNum, line, issues, feat)
       else if (k === 'mode') validateMode(lineNum, rest, issues)
-      else if (k === 'balance') validateBalance(lineNum, rest, issues)
+      else if (k === 'balance') validateBalance(lineNum, rest, issues, feat)
       else if (k === 'hash-type') validateHashType(lineNum, rest, issues)
       else if (k === 'acl') validateACL(lineNum, rest, issues)
-      else if (k === 'http-request') validateHttpRequestRule(lineNum, rest, issues)
+      else if (k === 'http-request') validateHttpRequestRule(lineNum, rest, issues, feat)
       else if (k === 'http-response') validateHttpResponseRule(lineNum, rest, issues)
       else if (k === 'http-after-response') validateHttpResponseRule(lineNum, rest, issues)
       else if (k === 'tcp-request') validateTcpRequestRule(lineNum, rest, issues)
       else if (k === 'tcp-response') validateTcpResponseRule(lineNum, rest, issues)
       else if (k === 'cookie') validateCookie(lineNum, rest, issues)
       else if (k === 'stick-table') validateStickTable(lineNum, rest, issues)
-      else if (k === 'option') validateOption(lineNum, secType, rest, issues)
+      else if (k === 'option') validateOption(lineNum, secType, rest, issues, feat)
       else if (k === 'timeout') validateTimeout(lineNum, rest, issues)
       else if (k === 'retries') validateRetries(lineNum, rest, issues)
       else if (k === 'maxconn') validateMaxconn(lineNum, rest, issues)

@@ -280,6 +280,21 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
                 spellCheck={false}
               />
             </div>
+            {parseError && (
+              <div className="border-t border-red-200 dark:border-red-800 px-4 py-2 bg-red-50 dark:bg-red-900/20">
+                <pre className="text-xs font-mono text-red-600 dark:text-red-400 whitespace-pre-wrap">{parseError}</pre>
+              </div>
+            )}
+            <div className="border-t border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center gap-2 bg-white dark:bg-slate-800 rounded-b-xl">
+              <button className="btn-primary text-xs" onClick={handleParse} disabled={loading}>
+                {loading ? <RefreshCw size={13} className="animate-spin"/> : <Eye size={13}/>}
+                Load into Visual Editor
+              </button>
+              <label className="btn-sm btn-secondary text-xs cursor-pointer">
+                <Upload size={13}/> Upload .cfg
+                <input type="file" accept=".cfg,.conf,.txt" className="hidden" onChange={handleFileUpload}/>
+              </label>
+            </div>
           </div>
         )}
 

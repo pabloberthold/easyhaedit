@@ -32,8 +32,8 @@ const VALID_TCP_REQUEST_TYPES = new Set([
 const VALID_TCP_RESPONSE_TYPES = new Set(['content', 'inspect-delay'])
 
 const VALID_TIMEOUT_SUBS = new Set([
-  'connect', 'client', 'client-fin', 'server', 'server-fin',
-  'tunnel', 'http-request', 'http-keep-alive', 'check', 'queue',
+  'connect', 'client', 'client-fin', 'client-hs', 'server', 'server-fin',
+  'tunnel', 'http-request', 'http-keep-alive', 'check', 'queue', 'tarpit',
 ])
 
 const VALID_COOKIE_METHODS = new Set(['rewrite', 'insert', 'prefix'])

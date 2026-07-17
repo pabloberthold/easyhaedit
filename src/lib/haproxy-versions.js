@@ -11,23 +11,27 @@ const VERSION_FEATURES = {
     options: new Set([
       'abortonclose', 'accept-invalid-http-request', 'accept-invalid-http-response',
       'allbackups', 'backups', 'checkcache', 'clitcpka', 'close',
-      'contstats', 'dontlognull', 'dontlog-normal', 'forceclose',
-      'forwardfor', 'http-pretend-keepalive', 'http-proxy',
-      'http-no-delay', 'http-use-htx', 'http-keep-alive', 'http-tunnel',
-      'http-restrict-req-hdr-names', 'httpchk', 'httplog', 'http-server-close',
-      'independent-streams', 'ldap-check', 'log-health-checks',
-      'log-separate-errors', 'logasap', 'mysql-check', 'nolinger',
-      'originalto', 'persist', 'pgsql-check', 'redispatch',
-      'redis-check', 'smtpchk', 'socket-stats', 'ssl-hello-chk',
-      'srvtcpka', 'standalone', 'tcp-check', 'tcp-smart-accept',
-      'tcp-smart-connect', 'tcplog', 'transparent',
+      'contstats',       'disable-h2-upgrade', 'dontlognull', 'dontlog-normal',
+      'external-check', 'forceclose', 'forwardfor',
+      'http-buffer-request', 'idle-close-on-response',
+      'http-ignore-probes', 'http-no-delay', 'http-pretend-keepalive',
+      'http-proxy', 'http-restrict-req-hdr-names', 'http-server-close',
+      'http-tunnel', 'http-use-proxy-header', 'http-use-htx', 'http-keep-alive',
+      'httpchk', 'httpclose', 'httplog', 'independent-streams', 'ldap-check',
+      'log-health-checks', 'log-separate-errors', 'logasap', 'mysql-check',
+      'nolinger', 'originalto', 'persist', 'pgsql-check', 'prefer-last-server',
+      'redispatch', 'redis-check', 'smtpchk', 'socket-stats',
+      'splice-auto', 'splice-request', 'splice-response', 'spop-check',
+      'ssl-hello-chk', 'srvtcpka', 'standalone', 'tcp-check',
+      'tcp-smart-accept',
+      'tcp-smart-connect', 'tcpka', 'tcplog', 'transparent',
     ]),
     http_request_actions: new Set([
       'allow', 'deny', 'redirect', 'auth', 'tarpit',
       'add-header', 'set-header', 'del-header',
       'replace-header', 'replace-value', 'set-nice', 'set-log-level',
       'set-tos', 'set-mark', 'set-uri', 'set-path', 'set-query',
-      'set-method', 'set-src', 'set-dst', 'set-dst-port',
+      'set-method', 'set-src', 'set-dst', 'set-dst-port', 'set-src-port',
       'cache-use', 'sc-add-gpc', 'sc-inc-gpc', 'sc-inc-gpc0',
       'sc-inc-gpc1', 'sc-set-gpt0', 'sc-set-gpt1', 'send-spoe-group',
       'set-timeout', 'early-hint', 'disable-l7-retry',
@@ -38,7 +42,8 @@ const VERSION_FEATURES = {
       'use-service', 'do-resolve', 'normalize-uri',
       'set-pathq', 'replace-path', 'replace-pathq', 'replace-uri',
       'set-priority-class', 'set-priority-offset', 'add-acl', 'del-acl',
-      'del-map',
+      'del-map', 'set-status', 'strict-mode', 'cache-store',
+      'close', 'pause',
     ]),
     server_params: new Set([
       'check', 'no-check', 'ssl', 'no-ssl', 'backup', 'no-backup',
@@ -99,16 +104,26 @@ const VERSION_FEATURES = {
       'server', 'server-template', 'server-defaults',
       'http-reuse', 'http-send-name-header',
       'redirect', 'source', 'ignore-persist', 'force-persist',
-      'external-check', 'errorfile', 'errorloc', 'errorloc302',
+      'external-check', 'errorfile', 'errorfiles', 'errorloc', 'errorloc302',
+      'errorloc303', 'error-log-format', 'backlog', 'description',
+      'disabled', 'enabled', 'id', 'rate-limit sessions', 'retry-on',
       'stats', 'unique-id-format', 'unique-id-header',
-      'capture',       'monitor-uri', 'monitor', 'random', 'bind', 'filter',
+      'capture', 'monitor-uri', 'monitor', 'random', 'bind', 'filter',
       'log-format', 'log-format-sd', 'log-tag',
-      'load-server-state-from-file', 'dynamic-cookie-key',
+      'load-server-state-from-file', 'dynamic-cookie-key', 'transparent',
+      'persist rdp-cookie', 'server-state-file-name',
+      'use-fcgi-app', 'use-server',
+      'hash-balance-factor', 'hash-preserve-affinity',
+      'declare capture', 'force-be-switch',
+      'email-alert', 'h1-case-adjust-bogus-client', 'h1-case-adjust-bogus-server',
+      'http-drop-request-trailers', 'http-drop-response-trailers', 'srvtcpka-cnt',
+      'srvtcpka-idle', 'srvtcpka-intvl', 'clitcpka-cnt', 'clitcpka-idle',
+      'clitcpka-intvl', 'max-keep-alive-queue', 'max-session-srv-conns',
     ]),
   },
   '2.5': {
-    options_added: new Set(['idle-close-on-response']),
-    http_request_actions_added: new Set(['wait-for-body']),
+    options_added: new Set([]),
+    http_request_actions_added: new Set(['wait-for-body', 'set-var-fmt']),
     global_dirs_added: new Set(['close-spread-time', 'harden']),
     proxy_dirs_added: new Set([]),
     server_params_added: new Set([]),
@@ -142,7 +157,7 @@ const VERSION_FEATURES = {
   '2.8': {
     global_dirs_added: new Set([]),
     proxy_dirs_added: new Set([]),
-    options_added: new Set([]),
+    options_added: new Set(['forwarded']),
     server_params_added: new Set(['log-proto', 'pool-conn-name']),
     bind_params_added: new Set([]),
   },
@@ -155,6 +170,7 @@ const VERSION_FEATURES = {
     bind_params_added: new Set([]),
   },
   '3.0': {
+    balance_added: new Set(['hash', 'log-hash']),
     global_dirs_added: new Set([
       'harden.reject-privileged-ports.tcp', 'harden.reject-privileged-ports.quic',
       'ssl-security-level', 'stats-file', 'http-err-codes', 'http-fail-codes',
@@ -172,7 +188,7 @@ const VERSION_FEATURES = {
       'ssl-skip-self-issued-ca', 'unix-bind', 'ssl-security-level',
     ]),
     proxy_dirs_added: new Set([
-      'guid', 'crt-store',
+      'guid', 'crt-store', 'log-steps', 'hash-balance-factor',
     ]),
     options_added: new Set([]),
     http_request_actions_added: new Set([
@@ -244,7 +260,7 @@ const VERSION_FEATURES = {
       'tune.quic.be.tx.pacing', 'tune.quic.be.tx.udp-gso',
     ]),
     proxy_dirs_added: new Set([]),
-    options_added: new Set(['splice-auto']),
+    options_added: new Set([]),
     http_request_actions_added: new Set([]),
     server_params_added: new Set([
       'sni-auto', 'no-sni-auto', 'check-sni-auto', 'no-check-sni-auto',
@@ -293,6 +309,7 @@ function buildVersionData(version) {
     const feat = VERSION_FEATURES[v]
     if (!feat) continue
     for (const k of (feat.balance || [])) result.balance.add(k)
+    for (const k of (feat.balance_added || [])) result.balance.add(k)
     for (const k of (feat.options || [])) result.options.add(k)
     for (const k of (feat.options_added || [])) result.options.add(k)
     for (const k of (feat.http_request_actions || [])) result.http_request_actions.add(k)

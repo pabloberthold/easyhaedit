@@ -37,6 +37,7 @@ backend web_backend
     server web01 10.0.0.1:80 check
 `
 
+const APP_VERSION = '1.1.0'
 const LOCAL_SESSION_KEY = 'easyhaedit_local_cfg'
 
 function Notification({ notif }) {
@@ -259,12 +260,17 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
               <span className="text-xs font-mono text-slate-400">haproxy.cfg</span>
               <span className="text-xs text-slate-400">{rawCfg.split('\n').length} lines</span>
             </div>
-            <textarea
-              className="flex-1 bg-transparent text-sm font-mono text-slate-700 dark:text-slate-300 p-4 resize-none focus:outline-none"
-              value={rawCfg}
-              onChange={e => { setRawCfg(e.target.value); if (setDirty) setDirty(true) }}
-              spellCheck={false}
-            />
+            <div className="flex flex-1 min-h-0">
+              <div className="text-right text-xs font-mono text-slate-400 dark:text-slate-500 p-4 pr-2 select-none border-r border-slate-200 dark:border-slate-600 overflow-hidden leading-5" aria-hidden="true">
+                {rawCfg.split('\n').map((_, i) => <div key={i}>{i + 1}</div>)}
+              </div>
+              <textarea
+                className="flex-1 bg-transparent text-sm font-mono text-slate-700 dark:text-slate-300 p-4 pl-2 resize-none focus:outline-none leading-5"
+                value={rawCfg}
+                onChange={e => { setRawCfg(e.target.value); if (setDirty) setDirty(true) }}
+                spellCheck={false}
+              />
+            </div>
           </div>
         )}
 
@@ -433,7 +439,7 @@ export default function App() {
 
         {/* Footer */}
         <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-6 py-2 shrink-0 flex items-center justify-between">
-          <span className="text-[11px] text-slate-400">v1.0.0</span>
+          <span className="text-[11px] text-slate-400">v{APP_VERSION}</span>
           <span className="text-[11px] text-slate-400">Coding by <a href="https://github.com/pabloberthold" target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:text-brand-700 transition-colors">pabloberthold</a></span>
         </footer>
       </div>

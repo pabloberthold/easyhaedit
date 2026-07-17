@@ -12,7 +12,10 @@ Editor visual de configuración de HAProxy — sitio estático 100% client-side.
   - 25+ reglas de validación por directiva (`bind`, `server`, `mode`, `balance`, `timeout`, `option`, `cookie`, `acl`, `stick-table`, `http-request`, `tcp-request`, etc.)
   - Validación cross-sección: nombres duplicados, backends referenciados vs existentes, directivas prohibidas en cada tipo de sección
   - Severidad: errores (bloqueantes) y warnings (convenciones/buenas prácticas)
-  - **Selector de versión HAProxy** (2.4 a 3.1) — las reglas se ajustan a la versión seleccionada
+   - **Selector de versión HAProxy** (2.4 a 3.4) — las reglas se ajustan a la versión seleccionada
+   - Directivas obsoletas/eliminadas detectadas según versión (dispatch, option transparent, master-worker, program)
+   - Versiones de secciones validadas (crt-store → 3.0+, log-profile/traces → 3.1+, acme → 3.2+)
+   - 200+ directivas 3.x incluyendo QUIC backend, TLS ECH, KTLS, ACME, QMux, OpenTelemetry, múltiples buffers
 - **Números de línea** en editor raw
 - **GitHub Pages** — deploy automatizado via GitHub Actions
 
@@ -37,7 +40,7 @@ src/
 │   ├── haproxy-parser.js      # Parser → objeto estructurado
 │   ├── haproxy-serializer.js  # Objeto → texto .cfg
 │   ├── haproxy-validator.js   # Validador sintáctico/semántico
-│   └── haproxy-versions.js    # Perfiles de versión HAProxy 2.4-3.1
+│   └── haproxy-versions.js    # Perfiles de versión HAProxy 2.4-3.4
 ├── components/
 │   ├── SectionCard.jsx        # Editor visual por sección
 │   ├── ServerEditor.jsx       # Editor de servidores

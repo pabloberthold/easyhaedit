@@ -430,6 +430,12 @@ export default function App() {
           notify={notify}
           dirty={dirty} setDirty={setDirty}
         />
+
+        {/* Footer */}
+        <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-6 py-2 shrink-0 flex items-center justify-between">
+          <span className="text-[11px] text-slate-400">v1.0.0</span>
+          <span className="text-[11px] text-slate-400">Coding by <a href="https://github.com/pabloberthold" target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:text-brand-700 transition-colors">pabloberthold</a></span>
+        </footer>
       </div>
     </div>
   )

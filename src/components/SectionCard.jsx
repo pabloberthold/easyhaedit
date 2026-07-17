@@ -1,0 +1,465 @@
+import { useState, useEffect, memo } from 'react'
+import {
+  ChevronDown, ChevronRight, Trash2,
+  Globe, Server, Settings, List,
+  Activity, Database, Clock, SlidersHorizontal, FileCode,
+  Maximize2, Minimize2
+} from 'lucide-react'
+import ACLEditor        from './ACLEditor'
+import ServerEditor     from './ServerEditor'
+import HttpRulesEditor  from './HttpRulesEditor'
+import HealthCheckEditor from './HealthCheckEditor'
+import PersistenceEditor from './PersistenceEditor'
+import TimeoutsEditor   from './TimeoutsEditor'
+
+const TYPE_BADGE = {
+  frontend: 'badge-fe',
+  backend:  'badge-be',
+  listen:   'badge-ls',
+}
+
+const BALANCE_OPTIONS = [
+  '', 'roundrobin', 'leastconn', 'source', 'random', 'uri',
+  'hdr', 'rdp-cookie', 'first', 'static-rr',
+]
+
+const TABS = [
+  { id: 'overview',     label: 'Overview',     icon: Globe },
+  { id: 'acls',        label: 'ACLs',          icon: List },
+  { id: 'httprules',   label: 'HTTP Rules',    icon: FileCode },
+  { id: 'health',      label: 'Health Check',  icon: Activity },
+  { id: 'persistence', label: 'Persistence',   icon: Database },
+  { id: 'timeouts',    label: 'Timeouts',      icon: Clock },
+  { id: 'options',     label: 'Options',       icon: SlidersHorizontal },
+]
+
+const TAB_VISIBILITY = {
+  frontend: ['overview', 'acls', 'httprules', 'timeouts', 'options'],
+  backend:  ['overview', 'acls', 'httprules', 'health', 'persistence', 'timeouts', 'options'],
+  listen:   ['overview', 'acls', 'httprules', 'health', 'persistence', 'timeouts', 'options'],
+}
+
+function OptionsList({ options = [], onChange }) {
+  const [newOpt, setNewOpt] = useState('')
+  const add = () => {
+    if (!newOpt.trim()) return
+    onChange([...options, newOpt.trim()])
+    setNewOpt('')
+  }
+  const remove = (i) => onChange(options.filter((_, idx) => idx !== i))
+  return (
+    <div className="space-y-2">
+      <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Options</h4>
+      <div className="space-y-1">
+        {options.map((opt, i) => (
+          <div key={i} className="flex items-center gap-2 group">
+            <code className="flex-1 text-xs font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-700">
+              option {opt}
+            </code>
+            <button onClick={() => remove(i)}
+              className="opacity-0 group-hover:opacity-100 btn-icon text-red-400 hover:text-red-600 hover:bg-red-50">
+              <Trash2 size={12}/>
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input className="input-mono py-1 flex-1" placeholder="httplog / forwardfor / redispatch …"
+          value={newOpt} onChange={e => setNewOpt(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }}/>
+        <button onClick={add} className="btn-sm btn-secondary">+ Add</button>
+      </div>
+    </div>
+  )
+}
+
+function ExtraLines({ extra = [], onChange }) {
+  const [val, setVal] = useState(extra.join('\n'))
+  return (
+    <div className="space-y-1.5">
+      <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+        Extra lines <span className="text-slate-300 font-normal">(verbatim, order preserved)</span>
+      </h4>
+      <textarea
+        className="input-mono w-full min-h-[80px] resize-y text-xs"
+        placeholder="Any directive not covered by the editor above"
+        value={val}
+        onChange={e => { setVal(e.target.value); onChange(e.target.value.split('\n').filter(l => l.trim())) }}
+      />
+    </div>
+  )
+}
+
+function UseBackendsTextarea({ section, onUpdate }) {
+  const toText = (ubs) => (ubs || []).map(u =>
+    u.condition ? `${u.backend} ${u.condition}` : u.backend
+  ).join('\n')
+
+  const [text, setText] = useState(() => toText(section.use_backends))
+
+  useEffect(() => {
+    setText(toText(section.use_backends))
+  }, [section.name])
+
+  const parseAndSave = (raw) => {
+    const rules = raw.split('\n')
+      .map(l => l.trimEnd()).filter(l => l.trimStart())
+      .map(l => {
+        const m = l.match(/^(\S+)\s+((?:if|unless).+)$/)
+        return m ? { backend: m[1], condition: m[2] } : { backend: l.trim(), condition: null }
+      })
+    onUpdate({ ...section, use_backends: rules })
+  }
+
+  return (
+    <div>
+      <label className="label">
+        use_backend rules <span className="text-slate-400 font-normal">(one per line: backend_name [if condition])</span>
+      </label>
+      <textarea
+        className="input-mono w-full min-h-[56px] resize-y text-xs"
+        placeholder={"api_backend if is_api\nstatic_backend if is_static"}
+        value={text}
+        onChange={e => setText(e.target.value)}
+        onBlur={e => parseAndSave(e.target.value)}
+      />
+    </div>
+  )
+}
+
+function EditorPanel({ type, section, onUpdate, visibleTabs, activeTab, setActiveTab,
+                       acls, hreq, hresp, expanded }) {
+
+  const srv = section.servers?.length || 0
+  const estimatedRows =
+    (activeTab === 'overview'  ? Math.max(6, (srv * 2) + 4) : 0) +
+    (activeTab === 'acls'      ? Math.max(4, acls * 2 + 3)  : 0) +
+    (activeTab === 'httprules' ? Math.max(4, (hreq + hresp) * 2 + 3) : 0) +
+    (activeTab !== 'overview' && activeTab !== 'acls' && activeTab !== 'httprules' ? 8 : 0)
+  const minContentH = expanded ? undefined : Math.min(Math.max(estimatedRows * 28, 200), 520)
+
+  return (
+    <div className={`flex flex-col ${expanded ? 'h-full' : ''} border-t border-slate-100`}>
+      <div className="flex gap-0 px-4 pt-3 border-b border-slate-100 bg-slate-50/60 overflow-x-auto shrink-0">
+        {visibleTabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 -mb-px whitespace-nowrap transition-colors
+              ${activeTab === tab.id
+                ? 'border-brand-600 text-brand-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+          >
+            <tab.icon size={12}/>
+            {tab.label}
+            {tab.id === 'acls'        && acls > 0           && <span className="ml-1 text-[10px] bg-blue-100 text-blue-600 rounded-full px-1.5">{acls}</span>}
+            {tab.id === 'httprules'   && (hreq+hresp) > 0   && <span className="ml-1 text-[10px] bg-purple-100 text-purple-600 rounded-full px-1.5">{hreq+hresp}</span>}
+            {tab.id === 'health'      && section.health_check?.option_httpchk !== null && section.health_check?.option_httpchk !== undefined && <span className="ml-1 w-1.5 h-1.5 bg-amber-400 rounded-full inline-block"/>}
+            {tab.id === 'persistence' && (section.cookie || section.stick_table) && <span className="ml-1 w-1.5 h-1.5 bg-pink-400 rounded-full inline-block"/>}
+          </button>
+        ))}
+      </div>
+
+      <div
+        className="overflow-y-auto px-5 pb-5 pt-4 bg-slate-50/40 space-y-5"
+        style={expanded ? { flex: 1 } : { minHeight: minContentH }}
+      >
+
+        {activeTab === 'overview' && (
+          <div className="space-y-4">
+            <div>
+              <label className="label">Name</label>
+              <input className="input-mono w-full max-w-xs"
+                value={section.name}
+                onChange={e => onUpdate({ ...section, name: e.target.value })}/>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {type !== 'backend' && (
+                <div>
+                  <label className="label">
+                    Bind <span className="text-slate-400 font-normal">(one per line)</span>
+                  </label>
+                  <textarea
+                    className="input-mono w-full min-h-[64px] resize-none text-xs"
+                    placeholder={"*:80\n*:443 ssl crt /etc/ssl/cert.pem"}
+                    value={(section.bind || []).join('\n')}
+                    onChange={e => onUpdate({
+                      ...section,
+                      bind: e.target.value.split('\n').map(s => s.trim()).filter(Boolean)
+                    })}
+                  />
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <div>
+                  <label className="label">Mode</label>
+                  <select className="input text-sm w-full"
+                    value={section.mode || ''}
+                    onChange={e => onUpdate({ ...section, mode: e.target.value || undefined })}>
+                    <option value="">— inherit —</option>
+                    <option value="http">http</option>
+                    <option value="tcp">tcp</option>
+                    <option value="health">health</option>
+                  </select>
+                </div>
+
+                {type !== 'frontend' && (
+                  <div>
+                    <label className="label">Balance</label>
+                    <select className="input text-sm w-full"
+                      value={section.balance || ''}
+                      onChange={e => onUpdate({ ...section, balance: e.target.value || undefined })}>
+                      {BALANCE_OPTIONS.map(b => (
+                        <option key={b} value={b}>{b || '— none —'}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="label">maxconn</label>
+                  <input className="input-mono w-full" type="number" min="0"
+                    placeholder="—"
+                    value={section.maxconn ?? ''}
+                    onChange={e => onUpdate({ ...section, maxconn: e.target.value ? parseInt(e.target.value) : null })}/>
+                </div>
+              </div>
+            </div>
+
+            {type !== 'backend' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="label">default_backend</label>
+                  <input className="input-mono w-full max-w-sm"
+                    value={section.default_backend || ''}
+                    onChange={e => onUpdate({ ...section, default_backend: e.target.value || null })}
+                    placeholder="web_backend"/>
+                </div>
+                <UseBackendsTextarea section={section} onUpdate={onUpdate} />
+              </div>
+            )}
+
+            {type !== 'frontend' && (
+              <div>
+                <label className="label">http-reuse</label>
+                <select className="input text-sm w-full max-w-xs"
+                  value={section.http_reuse || ''}
+                  onChange={e => onUpdate({ ...section, http_reuse: e.target.value || null })}>
+                  <option value="">— none —</option>
+                  <option value="never">never</option>
+                  <option value="safe">safe</option>
+                  <option value="aggressive">aggressive</option>
+                  <option value="always">always</option>
+                </select>
+              </div>
+            )}
+
+            {type !== 'frontend' && (
+              <ServerEditor
+                servers={section.servers || []}
+                onChange={servers => onUpdate({ ...section, servers })}
+              />
+            )}
+
+            <ExtraLines
+              extra={section.extra_lines || []}
+              onChange={extra_lines => onUpdate({ ...section, extra_lines })}
+            />
+          </div>
+        )}
+
+        {activeTab === 'acls' && (
+          <ACLEditor
+            acls={section.acls || []}
+            onChange={acls => onUpdate({ ...section, acls })}
+            sectionLabel={section.name}
+          />
+        )}
+
+        {activeTab === 'httprules' && (
+          <HttpRulesEditor
+            section={section}
+            onUpdate={onUpdate}
+            sectionType={type}
+          />
+        )}
+
+        {activeTab === 'health' && (
+          <HealthCheckEditor
+            healthCheck={section.health_check || null}
+            onChange={hc => onUpdate({ ...section, health_check: hc })}
+          />
+        )}
+
+        {activeTab === 'persistence' && (
+          <PersistenceEditor
+            section={section}
+            onUpdate={onUpdate}
+          />
+        )}
+
+        {activeTab === 'timeouts' && (
+          <TimeoutsEditor
+            timeouts={section.timeouts || {}}
+            onChange={timeouts => onUpdate({ ...section, timeouts })}
+            mode={section.mode || 'http'}
+            sectionType={type}
+          />
+        )}
+
+        {activeTab === 'options' && (
+          <OptionsList
+            options={section.options || []}
+            onChange={options => onUpdate({ ...section, options })}
+          />
+        )}
+
+      </div>
+    </div>
+  )
+}
+
+function SectionCard({ type, section, onUpdate, onRemove }) {
+  const [open, setOpen]           = useState(false)
+  const [expanded, setExpanded]   = useState(false)
+  const [activeTab, setActiveTab] = useState('overview')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  useEffect(() => {
+    if (!expanded) return
+    const handler = (e) => { if (e.key === 'Escape') setExpanded(false) }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [expanded])
+
+  const toggleExpanded = (e) => {
+    e.stopPropagation()
+    setExpanded(x => !x)
+    if (!open) setOpen(true)
+  }
+
+  const visibleTabs = TABS.filter(t => (TAB_VISIBILITY[type] || []).includes(t.id))
+
+  const handleDelete = (e) => {
+    e.stopPropagation()
+    if (confirmDelete) { onRemove() }
+    else { setConfirmDelete(true); setTimeout(() => setConfirmDelete(false), 3000) }
+  }
+
+  const srv    = section.servers?.length || 0
+  const acls   = section.acls?.length || 0
+  const hreq   = section.http_request?.length || 0
+  const hresp  = section.http_response?.length || 0
+
+  const editorPanelProps = {
+    type, section, onUpdate, visibleTabs,
+    activeTab, setActiveTab,
+    acls, hreq, hresp,
+  }
+
+  return (
+    <>
+      <div className={`card overflow-hidden transition-shadow ${expanded ? 'ring-2 ring-brand-400 ring-offset-2' : ''}`}>
+
+        <button
+          onClick={() => { setOpen(o => !o); if (expanded) setExpanded(false) }}
+          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left"
+        >
+          {open
+            ? <ChevronDown  size={13} className="text-slate-400 shrink-0"/>
+            : <ChevronRight size={13} className="text-slate-400 shrink-0"/>}
+
+          <span className={TYPE_BADGE[type] || 'badge-gl'}>{type}</span>
+          <span className="font-mono text-sm font-medium text-slate-700">{section.name}</span>
+
+          <div className="ml-auto flex items-center gap-3 text-xs text-slate-400 font-mono">
+            {section.bind?.length  > 0 && <span className="text-slate-500">{section.bind.join(', ')}</span>}
+            {section.mode          && <span className="text-slate-300">mode/{section.mode}</span>}
+            {section.balance       && <span className="text-slate-300">balance/{section.balance}</span>}
+            {srv  > 0              && <span className="text-emerald-600">{srv} srv</span>}
+            {acls > 0              && <span className="text-blue-600">{acls} acl</span>}
+            {hreq > 0              && <span className="text-purple-600">{hreq} http-req</span>}
+            {hresp > 0             && <span className="text-indigo-600">{hresp} http-resp</span>}
+            {section.health_check?.option_httpchk !== null &&
+             section.health_check?.option_httpchk !== undefined &&
+              <span className="text-amber-600">httpchk</span>}
+            {section.cookie        && <span className="text-pink-600">cookie</span>}
+            {section.stick_table   && <span className="text-orange-600">stick</span>}
+
+            <button
+              onClick={toggleExpanded}
+              className={`p-1 rounded transition-all ${
+                expanded
+                  ? 'text-brand-500 bg-brand-50 hover:bg-brand-100'
+                  : 'text-slate-300 hover:text-brand-500 hover:bg-brand-50'
+              }`}
+              title={expanded ? 'Volver a inline (Esc)' : 'Expandir a pantalla completa'}
+            >
+              {expanded ? <Minimize2 size={12}/> : <Maximize2 size={12}/>}
+            </button>
+
+            {onRemove && (
+              <button
+                onClick={handleDelete}
+                className={`p-1 rounded transition-all ${
+                  confirmDelete
+                    ? 'text-white bg-red-500 hover:bg-red-600'
+                    : 'text-slate-300 hover:text-red-500 hover:bg-red-50'
+                }`}
+              >
+                <Trash2 size={12}/>
+              </button>
+            )}
+          </div>
+        </button>
+
+        {open && !expanded && (
+          <EditorPanel {...editorPanelProps} expanded={false}/>
+        )}
+      </div>
+
+      {expanded && (
+        <div
+          className="fixed inset-0 z-[80] flex items-stretch justify-center bg-slate-900/60 backdrop-blur-sm p-4"
+          onClick={e => { if (e.target === e.currentTarget) setExpanded(false) }}
+        >
+          <div className="flex flex-col w-full max-w-6xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+
+            <div className="flex items-center gap-3 px-5 py-3 border-b border-slate-200 bg-slate-50 shrink-0">
+              <span className={TYPE_BADGE[type] || 'badge-gl'}>{type}</span>
+              <span className="font-mono text-sm font-semibold text-slate-700">{section.name}</span>
+              <div className="flex items-center gap-2 text-xs text-slate-400 font-mono ml-2">
+                {srv  > 0             && <span className="text-emerald-600">{srv} srv</span>}
+                {acls > 0             && <span className="text-blue-600">{acls} acl</span>}
+                {(hreq + hresp) > 0   && <span className="text-purple-600">{hreq + hresp} http-rules</span>}
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-[11px] text-slate-400 hidden sm:block select-none">Esc para cerrar</span>
+                <button
+                  onClick={() => setExpanded(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
+                  title="Cerrar (Esc)"
+                >
+                  <Minimize2 size={14}/>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <EditorPanel {...editorPanelProps} expanded={true}/>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+export default memo(SectionCard, (prev, next) =>
+  JSON.stringify(prev.section) === JSON.stringify(next.section) &&
+  prev.type === next.type &&
+  prev.onUpdate === next.onUpdate &&
+  prev.onRemove === next.onRemove
+)

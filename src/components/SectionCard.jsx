@@ -75,7 +75,7 @@ function OptionsList({ options = [], onChange, feat }) {
       </div>
       <details className="text-xs text-slate-400">
         <summary className="cursor-pointer hover:text-slate-600 font-medium">Available options for HAProxy {feat._version}</summary>
-        <div className="mt-1 flex flex-wrap gap-1 max-h-32 overflow-y-auto border border-slate-200 rounded p-1.5 bg-white">
+        <div className="mt-1 flex flex-wrap gap-1 max-h-80 overflow-y-auto border border-slate-200 rounded p-1.5 bg-white">
           {availableOptions.map(opt => (
             <button key={opt}
               className={`text-[11px] font-mono px-2 py-0.5 rounded transition-colors ${

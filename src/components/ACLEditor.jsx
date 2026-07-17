@@ -1,4 +1,5 @@
 import { useState, memo, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, Trash2, Save, ChevronDown } from 'lucide-react'
 
 const ACL_OPTIONS = [
@@ -73,6 +74,7 @@ function OptionDropdown({ value, onChange }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const ref = useRef(null)
+  const [pos, setPos] = useState(null)
 
   const selectedOpt = ACL_OPTIONS.find(o => o.value === value)
   const displayLabel = selectedOpt && value !== '__custom__'
@@ -84,6 +86,22 @@ function OptionDropdown({ value, onChange }) {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  useEffect(() => {
+    if (!open) { setPos(null); return }
+    const update = () => {
+      if (!ref.current) return
+      const rect = ref.current.getBoundingClientRect()
+      setPos({ top: rect.bottom + 4, left: rect.left, width: Math.max(280, rect.width) })
+    }
+    update()
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
   }, [open])
 
   const searchLower = search.toLowerCase()
@@ -104,9 +122,11 @@ function OptionDropdown({ value, onChange }) {
         <ChevronDown size={11} className={`shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}/>
       </button>
 
-      {open && (
-        <div className="absolute z-[70] top-full left-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-xl"
-          style={{ minWidth: 280, maxHeight: 320, overflowY: 'auto' }}>
+      {open && pos && createPortal(
+        <div
+          className="fixed z-[90] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-xl"
+          style={{ top: pos.top, left: pos.left, width: pos.width, maxHeight: 320, overflowY: 'auto' }}
+        >
           <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 px-2 py-1.5">
             <input
               autoFocus
@@ -138,7 +158,8 @@ function OptionDropdown({ value, onChange }) {
               ))
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

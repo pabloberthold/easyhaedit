@@ -1,41 +1,905 @@
+const SECTION_RE = /^\s*(global|defaults|frontend|backend|listen|resolvers|peers|userlist|program)\s*(.*?)\s*$/
+
+const VALID_BALANCE = new Set([
+  'roundrobin', 'leastconn', 'source', 'random', 'uri', 'hdr',
+  'rdp-cookie', 'first', 'static-rr',
+])
+
+const VALID_MODES = new Set(['http', 'tcp', 'health'])
+
+const VALID_HASH_TYPES = new Set([
+  'consistent', 'map-based', 'avalanche',
+])
+
+const VALID_HTTP_REUSE = new Set(['aggressive', 'always', 'never', 'safe'])
+
+const VALID_STICK_TABLE_TYPES = new Set([
+  'ip', 'ipv6', 'integer', 'string', 'binary',
+])
+
+const VALID_SERVER_VERIFY = new Set(['none', 'optional', 'required'])
+
+const VALID_ON_ERROR = new Set([
+  'fastinter', 'fail-check', 'log-health', 'sudden-death', 'mark-down',
+])
+
+const VALID_TCP_REQUEST_TYPES = new Set([
+  'connection', 'content', 'session', 'inspect-delay',
+])
+
+const VALID_TCP_RESPONSE_TYPES = new Set(['content', 'inspect-delay'])
+
+const VALID_TIMEOUT_SUBS = new Set([
+  'connect', 'client', 'client-fin', 'server', 'server-fin',
+  'tunnel', 'http-request', 'http-keep-alive', 'check', 'queue',
+])
+
+const VALID_COOKIE_METHODS = new Set(['rewrite', 'insert', 'prefix'])
+
+const TIME_RE = /^\d+[dhms]?$/
+
+function stripComment(line) {
+  let inQ = false, prev = ''
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if ((ch === '"' || ch === "'") && prev !== '\\') inQ = !inQ
+    if (ch === '#' && !inQ) return line.slice(0, i).trimEnd()
+    prev = ch
+  }
+  return line.trimEnd()
+}
+
+function splitSections(text) {
+  const result = []
+  let curType = null, curName = '', curLines = []
+  for (const raw of text.split('\n')) {
+    const line = stripComment(raw)
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    const m = trimmed.match(SECTION_RE)
+    if (m) {
+      if (curType !== null) result.push([curType, curName, curLines])
+      curType = m[1]
+      curName = (m[2] || '').trim()
+      curLines = []
+    } else if (curType !== null) {
+      curLines.push(trimmed)
+    }
+  }
+  if (curType !== null) result.push([curType, curName, curLines])
+  return result
+}
+
+function kv(line) {
+  const idx = line.indexOf(' ')
+  return idx === -1 ? [line, ''] : [line.slice(0, idx), line.slice(idx + 1).trim()]
+}
+
+function kvLower(line) {
+  const idx = line.indexOf(' ')
+  const k = idx === -1 ? line : line.slice(0, idx)
+  const v = idx === -1 ? '' : line.slice(idx + 1).trim()
+  return [k.toLowerCase(), v]
+}
+
+function isTime(val) {
+  return TIME_RE.test(val)
+}
+
+function isPort(n) {
+  return Number.isInteger(n) && n >= 1 && n <= 65535
+}
+
+function isNumeric(val) {
+  if (typeof val === 'number') return true
+  return /^\d+$/.test(val.trim())
+}
+
+function hasValue(v) {
+  return v && v.length > 0
+}
+
+const GLOBAL_DIRECTIVES = new Set([
+  'chroot', 'user', 'group', 'uid', 'gid', 'daemon', 'master-worker',
+  'expose-experimental-directives', 'nbproc', 'cpu-map',
+  'numa-cpu-mapping', 'ulimit-n', 'pidfile', 'description', 'node', 'localpeer',
+  'log-send-hostname', 'log-tag', 'ca-base', 'crt-base',
+  'ssl-default-bind-ciphers', 'ssl-default-bind-ciphersuites',
+  'ssl-default-bind-options', 'ssl-default-server-ciphers',
+  'ssl-default-server-ciphersuites', 'ssl-default-server-options',
+  'ssl-dh-param-file', 'ssl-server-verify', 'tune.ssl.maxrecord',
+  'tune.maxrewrite', 'tune.bufsize', 'tune.http.maxhdr',
+  'tune.idle-pool.shared', 'tune.rcvbuf.client', 'tune.rcvbuf.server',
+  'tune.sndbuf.client', 'tune.sndbuf.server',
+  'insecure-fork-wanted', 'set-var', 'setenv', 'presetenv',
+])
+
+// Directives valid in both global AND proxy sections
+const SHARED_DIRECTIVES = new Set([
+  'log', 'maxconn', 'stats', 'external-check',
+])
+
+const PROXY_DIRECTIVES = new Set([
+  'mode', 'balance', 'hash-type', 'maxconn', 'fullconn', 'log', 'option',
+  'timeout', 'retries', 'acl', 'http-request', 'http-response',
+  'http-after-response', 'tcp-request', 'tcp-response', 'use_backend',
+  'default_backend', 'stick-table', 'stick', 'cookie', 'compression',
+  'server', 'server-template', 'server-defaults', 'http-reuse',
+  'http-send-name-header', 'redirect', 'source', 'ignore-persist',
+  'force-persist', 'external-check', 'errorfile', 'errorloc', 'errorloc302',
+  'stats', 'unique-id-format', 'unique-id-header', 'capture',
+  'monitor-uri', 'monitor', 'random', 'log-format', 'log-format-sd',
+  'log-tag', 'load-server-state-from-file',
+])
+
+const FRONTEND_ONLY = new Set(['bind'])
+
+const BACKEND_ONLY = new Set(['server', 'server-template'])
+
+const LISTEN_ALLOWED = new Set(['bind', 'server', 'server-template'])
+
+function validateBind(lineNum, line, issues) {
+  const rest = line.slice(5).trim()
+  if (!rest) {
+    issues.push({ line: lineNum, severity: 'error', message: 'bind directive missing address:port or path' })
+    return
+  }
+  const parts = rest.split(/\s+/)
+  const addr = parts[0]
+
+  if (addr.startsWith('/')) return
+
+  if (addr.includes(':')) {
+    const lastColon = addr.lastIndexOf(':')
+    const portStr = addr.slice(lastColon + 1)
+    const port = parseInt(portStr)
+    if (isNaN(port) || !isPort(port)) {
+      issues.push({ line: lineNum, severity: 'error', message: `bind: invalid port '${portStr}' in '${addr}'` })
+    }
+    const params = parts.slice(1)
+    validateBindParams(lineNum, params, issues)
+  } else if (addr === '*') {
+    issues.push({ line: lineNum, severity: 'error', message: 'bind * requires a port (e.g. *:80)' })
+  }
+}
+
+function validateBindParams(lineNum, params, issues) {
+  let i = 0
+  const known = new Set([
+    'accept-nproxy', 'accept-proxy', 'allow-0rtt', 'alpn', 'backlog',
+    'ca-file', 'ca-ignore-err', 'ca-sign-file', 'ca-sign-pass', 'ccas',
+    'ciphers', 'ciphersuites', 'crl-file', 'crl-ignore-err', 'crt',
+    'crt-ignore-err', 'crt-list', 'curves', 'defer-accept', 'ecdhe',
+    'expose-fd', 'force-sslv3', 'force-tlsv10', 'force-tlsv11',
+    'force-tlsv12', 'force-tlsv13', 'generate-certificates',
+    'gid', 'group', 'id', 'interface', 'level', 'maxconn', 'mode',
+    'mss', 'name', 'nice', 'no-sslv3', 'no-tlsv10', 'no-tlsv11',
+    'no-tlsv12', 'no-tlsv13', 'npn', 'prefer-client-ciphers',
+    'process', 'protect', 'proto', 'ssl', 'strict-sni', 'tcp-ut',
+    'tfo', 'thread', 'transparent', 'uid', 'user', 'verify',
+    'v4v6', 'v6only', 'quic', 'quic-cc-algo', 'quic-force-retry',
+    'quic-retry-impact-key',
+  ])
+  while (i < params.length) {
+    const p = params[i]
+    if (!p.startsWith('ssl') && known.has(p) && i + 1 < params.length) {
+      i += 2
+    } else {
+      i++
+    }
+  }
+}
+
+function validateServer(lineNum, line, issues) {
+  const parts = line.split(/\s+/)
+  if (parts.length < 3) {
+    issues.push({ line: lineNum, severity: 'error', message: 'server: missing name and/or address:port' })
+    return
+  }
+  const name = parts[1]
+  if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+    issues.push({ line: lineNum, severity: 'warning', message: `server: name '${name}' may contain invalid characters` })
+  }
+  const addrPort = parts[2]
+  const lastColon = addrPort.lastIndexOf(':')
+  if (lastColon === -1) {
+    issues.push({ line: lineNum, severity: 'error', message: `server '${name}': missing port in '${addrPort}'` })
+  } else {
+    const portStr = addrPort.slice(lastColon + 1)
+    const port = parseInt(portStr)
+    if (isNaN(port) || !isPort(port)) {
+      issues.push({ line: lineNum, severity: 'error', message: `server '${name}': invalid port '${portStr}'` })
+    }
+    const addr = addrPort.slice(0, lastColon)
+    if (!addr || addr === '*') {
+      issues.push({ line: lineNum, severity: 'error', message: `server '${name}': invalid address '${addr}'` })
+    }
+  }
+
+  const params = parts.slice(3)
+  let i = 0
+  while (i < params.length) {
+    const p = params[i].toLowerCase()
+    if (p === 'check') i++
+    else if (p === 'no-check') i++
+    else if (p === 'ssl') i++
+    else if (p === 'no-ssl') i++
+    else if (p === 'backup') i++
+    else if (p === 'disabled') i++
+    else if (p === 'no-backup') i++
+    else if (p === 'weight' || p === 'maxconn' || p === 'maxqueue' ||
+             p === 'minconn' || p === 'pool-max-conn' || p === 'max-session-srv-conn') {
+      if (i + 1 >= params.length) {
+        issues.push({ line: lineNum, severity: 'error', message: `server '${name}': ${p} requires a value` })
+        i++
+      } else {
+        const n = parseInt(params[i + 1])
+        if (isNaN(n) || n < 0) {
+          issues.push({ line: lineNum, severity: 'warning', message: `server '${name}': ${p} should be a positive number` })
+        }
+        i += 2
+      }
+    }
+    else if (p === 'inter' || p === 'fastinter' || p === 'downinter' ||
+             p === 'rise' || p === 'fall') {
+      if (i + 1 >= params.length) {
+        issues.push({ line: lineNum, severity: 'error', message: `server '${name}': ${p} requires a value` })
+        i++
+      } else {
+        i += 2
+      }
+    }
+    else if (p === 'track') {
+      if (i + 1 >= params.length) {
+        issues.push({ line: lineNum, severity: 'error', message: `server '${name}': track requires a value (e.g. backend/server)` })
+        i++
+      } else i += 2
+    }
+    else if (p === 'on-error') {
+      if (i + 1 >= params.length) { i++ }
+      else {
+        if (!VALID_ON_ERROR.has(params[i + 1].toLowerCase())) {
+          issues.push({ line: lineNum, severity: 'warning', message: `server '${name}': unknown on-error method '${params[i + 1]}'` })
+        }
+        i += 2
+      }
+    }
+    else if (p === 'verify') {
+      if (i + 1 >= params.length) { i++ }
+      else {
+        if (!VALID_SERVER_VERIFY.has(params[i + 1].toLowerCase())) {
+          issues.push({ line: lineNum, severity: 'warning', message: `server '${name}': unknown verify mode '${params[i + 1]}'` })
+        }
+        i += 2
+      }
+    }
+    else if (p === 'resolvers' || p === 'sni' || p === 'init-addr' ||
+             p === 'id' || p === 'cookie' || p === 'redir' ||
+             p === 'addr' || p === 'source' || p === 'stick' ||
+             p === 'send-proxy' || p === 'send-proxy-v2' ||
+             p === 'send-proxy-v2-ssl' || p === 'send-proxy-v2-ssl-cn' ||
+             p === 'agent-check' || p === 'agent-inter' ||
+             p === 'agent-addr' || p === 'agent-port' ||
+             p === 'agent-send' || p === 'allow-0rtt' ||
+             p === 'check-send-proxy' || p === 'check-via-socks4' ||
+             p === 'crl-file' || p === 'crt' || p === 'ca-file' ||
+             p === 'ciphers' || p === 'ciphersuites' ||
+             p === 'force-sslv3' || p === 'force-tlsv10' ||
+             p === 'force-tlsv11' || p === 'force-tlsv12' ||
+             p === 'force-tlsv13' || p === 'no-sslv3' ||
+             p === 'no-tlsv10' || p === 'no-tlsv11' ||
+             p === 'no-tlsv12' || p === 'no-tlsv13' ||
+             p === 'no-sni' || p === 'non-stick' ||
+             p === 'check-ssl' || p === 'no-check-ssl' ||
+             p === 'proto' || p === 'namespace' ||
+             p === 'log-proto' || p === 'max-reuse' ||
+             p === 'pool-purge-delay' || p === 'pool-low-conn') {
+      if (i + 1 >= params.length) { i++ }
+      else i += 2
+    }
+    else if (p === 'health-check-up' || p === 'health-check-down' ||
+             p === 'observe') {
+      i++
+    }
+    else {
+      issues.push({ line: lineNum, severity: 'warning', message: `server '${name}': unknown parameter '${params[i]}'` })
+      i++
+    }
+  }
+}
+
+function validateMode(lineNum, mode, issues) {
+  if (!VALID_MODES.has(mode.toLowerCase())) {
+    issues.push({ line: lineNum, severity: 'warning', message: `Unknown mode '${mode}'. Valid: http, tcp, health` })
+  }
+}
+
+function validateBalance(lineNum, bal, issues) {
+  const val = bal.toLowerCase()
+  if (val.startsWith('uri ')) return
+  if (val.startsWith('hdr(')) return
+  if (val.startsWith('rdp-cookie(')) return
+  if (!VALID_BALANCE.has(val)) {
+    issues.push({ line: lineNum, severity: 'warning', message: `Unknown balance algorithm '${bal}'. Valid: ${[...VALID_BALANCE].join(', ')}` })
+  }
+}
+
+function validateHashType(lineNum, hashType, issues) {
+  const main = hashType.split(/\s+/)[0].toLowerCase()
+  if (!VALID_HASH_TYPES.has(main)) {
+    issues.push({ line: lineNum, severity: 'warning', message: `Unknown hash-type '${hashType}'` })
+  }
+}
+
+function validateACL(lineNum, rest, issues) {
+  const parts = rest.split(/\s+/, 2)
+  if (parts.length < 2 || !parts[0] || !parts[1]) {
+    issues.push({ line: lineNum, severity: 'error', message: 'acl: requires name and criterion (e.g. acl is_static path_end .html)' })
+  }
+}
+
+function validateHttpRequestRule(lineNum, rest, issues) {
+  const actions = new Set([
+    'allow', 'deny', 'redirect', 'add-header', 'set-header', 'del-header',
+    'replace-header', 'replace-value', 'set-nice', 'set-log-level',
+    'set-tos', 'set-mark', 'set-uri', 'set-path', 'set-query',
+    'set-method', 'set-src', 'set-dst', 'set-dst-port',
+    'cache-use', 'sc-add-gpc', 'sc-inc-gpc', 'sc-inc-gpc0',
+    'sc-inc-gpc1', 'sc-set-gpt0', 'sc-set-gpt1', 'send-spoe-group',
+    'set-timeout', 'early-hint', 'disable-l7-retry',
+    'set-map', 'del-map', 'set-var', 'unset-var',
+    'track-sc0', 'track-sc1', 'track-sc2',
+    'capture', 'silent-drop', 'reject', 'return',
+    'wait-for-handshake', 'wait-for-body',
+    'use-service', 'do-resolve', 'check-fields',
+    'set-bandwith-limit',
+  ])
+  const action = rest.split(/\s+/)[0].toLowerCase()
+  if (!actions.has(action)) {
+    issues.push({ line: lineNum, severity: 'warning', message: `http-request: unknown action '${action}'` })
+  }
+  if (!rest || rest.trim().length === 0) {
+    issues.push({ line: lineNum, severity: 'error', message: 'http-request: missing action' })
+  }
+}
+
+function validateHttpResponseRule(lineNum, rest, issues) {
+  if (!rest || rest.trim().length === 0) {
+    issues.push({ line: lineNum, severity: 'error', message: 'http-response: missing action' })
+  }
+}
+
+function validateTcpRequestRule(lineNum, rest, issues) {
+  const parts = rest.split(/\s+/)
+  if (!parts.length || !VALID_TCP_REQUEST_TYPES.has(parts[0].toLowerCase())) {
+    issues.push({ line: lineNum, severity: 'error', message: `tcp-request: requires a valid type (connection, content, session, inspect-delay)` })
+  }
+  if (parts.length < 2) {
+    issues.push({ line: lineNum, severity: 'error', message: 'tcp-request: missing action after type' })
+  }
+}
+
+function validateTcpResponseRule(lineNum, rest, issues) {
+  const parts = rest.split(/\s+/)
+  if (!parts.length || !VALID_TCP_RESPONSE_TYPES.has(parts[0].toLowerCase())) {
+    issues.push({ line: lineNum, severity: 'error', message: `tcp-response: requires a valid type (content, inspect-delay)` })
+  }
+}
+
+function validateCookie(lineNum, rest, issues) {
+  const parts = rest.split(/\s+/)
+  if (parts.length < 2 || !parts[0] || !parts[1]) {
+    issues.push({ line: lineNum, severity: 'error', message: 'cookie: requires name and method (rewrite|insert|prefix)' })
+    return
+  }
+  if (!VALID_COOKIE_METHODS.has(parts[1].toLowerCase())) {
+    issues.push({ line: lineNum, severity: 'error', message: `cookie: method must be one of: ${[...VALID_COOKIE_METHODS].join(', ')}` })
+  }
+}
+
+function validateStickTable(lineNum, rest, issues) {
+  if (!rest || rest.trim().length === 0) {
+    issues.push({ line: lineNum, severity: 'error', message: 'stick-table: requires type, size, and optionally expire/peers' })
+    return
+  }
+  const tokens = rest.split(/\s+/)
+  let hasType = false, hasSize = false
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i].toLowerCase()
+    if (t === 'type') {
+      if (i + 1 >= tokens.length) {
+        issues.push({ line: lineNum, severity: 'error', message: 'stick-table: type requires a value' })
+      } else {
+        if (!VALID_STICK_TABLE_TYPES.has(tokens[i + 1].toLowerCase())) {
+          issues.push({ line: lineNum, severity: 'warning', message: `stick-table: unknown type '${tokens[i + 1]}'` })
+        }
+        hasType = true
+      }
+    }
+    if (t === 'size') {
+      if (i + 1 >= tokens.length) {
+        issues.push({ line: lineNum, severity: 'error', message: 'stick-table: size requires a value' })
+      } else hasSize = true
+    }
+    if (t === 'store') {
+      if (i + 1 >= tokens.length) {
+        issues.push({ line: lineNum, severity: 'error', message: 'stick-table: store requires a value' })
+      }
+    }
+    if (t === 'expire' && i + 1 < tokens.length && !isTime(tokens[i + 1])) {
+      issues.push({ line: lineNum, severity: 'warning', message: `stick-table: expire '${tokens[i + 1]}' does not look like a valid time` })
+    }
+    if (t === 'peers' && i + 1 < tokens.length) i++
+  }
+  if (!hasType) {
+    issues.push({ line: lineNum, severity: 'error', message: 'stick-table: missing type (ip, ipv6, integer, string, binary)' })
+  }
+  if (!hasSize) {
+    issues.push({ line: lineNum, severity: 'warning', message: 'stick-table: missing size (will use default 100k)' })
+  }
+}
+
+function validateOption(lineNum, sectionType, option, issues) {
+  const opt = option.split(/\s+/)[0].toLowerCase()
+
+  const knownOptions = new Set([
+    'abortonclose', 'accept-invalid-http-request', 'accept-invalid-http-response',
+    'allbackups', 'backups', 'checkcache', 'clitcpka', 'close',
+    'contstats', 'dontlognull', 'dontlog-normal', 'forceclose',
+    'forwardfor', 'http-pretend-keepalive', 'http-proxy',
+    'http-no-delay', 'http-use-htx', 'http-keep-alive', 'http-tunnel',
+    'http-restrict-req-hdr-names', 'httpchk', 'httplog', 'http-server-close',
+    'independent-streams', 'ldap-check', 'log-health-checks',
+    'log-separate-errors', 'logasap', 'mysql-check', 'nolinger',
+    'originalto', 'persist', 'pgsql-check', 'mysql-check',
+    'redispatch', 'redis-check', 'redis-check', 'smtpchk',
+    'socket-stats', 'ssl-hello-chk', 'srvtcpka', 'standalone',
+    'tcp-check', 'tcp-smart-accept', 'tcp-smart-connect', 'tcplog',
+    'transparent',
+  ])
+
+  const healthOptions = new Set([
+    'httpchk', 'smtpchk', 'mysql-check', 'pgsql-check', 'redis-check',
+    'ssl-hello-chk', 'tcp-check', 'ldap-check',
+  ])
+
+  if (!knownOptions.has(opt)) {
+    issues.push({ line: lineNum, severity: 'warning', message: `Unknown option '${option.split(/\s+/)[0]}'` })
+  }
+
+  if (opt === 'forwardfor') {
+    const val = option.slice(10).trim().toLowerCase()
+    if (val && val !== 'except' && val !== 'header') {
+      issues.push({ line: lineNum, severity: 'warning', message: 'option forwardfor: valid params are except <network> or header <name>' })
+    }
+  }
+}
+
+function validateTimeout(lineNum, rest, issues) {
+  const parts = rest.split(/\s+/, 2)
+  if (!parts.length) {
+    issues.push({ line: lineNum, severity: 'error', message: 'timeout: requires a sub-option (connect, client, server, etc.)' })
+    return
+  }
+  const sub = parts[0].toLowerCase()
+  if (!VALID_TIMEOUT_SUBS.has(sub)) {
+    issues.push({ line: lineNum, severity: 'warning', message: `timeout: unknown sub-option '${sub}'` })
+    return
+  }
+  if (parts.length < 2 || !parts[1].trim()) {
+    issues.push({ line: lineNum, severity: 'error', message: `timeout ${sub}: missing value` })
+    return
+  }
+  const val = parts[1]
+  if (!isTime(val) && !isNumeric(val)) {
+    issues.push({ line: lineNum, severity: 'warning', message: `timeout ${sub}: '${val}' does not look like a valid time (e.g. 5s, 30s, 1m)` })
+  }
+}
+
+function validateStats(lineNum, rest, issues) {
+  if (!rest || rest.trim().length === 0) {
+    issues.push({ line: lineNum, severity: 'warning', message: 'stats: missing keyword (uri, realm, auth, refresh, admin, etc.)' })
+  }
+}
+
+function validateSource(lineNum, rest, issues) {
+  if (!rest || rest.trim().length === 0) {
+    issues.push({ line: lineNum, severity: 'warning', message: 'source: missing address or interface' })
+  }
+}
+
+function validateRetries(lineNum, val, issues) {
+  const n = parseInt(val)
+  if (isNaN(n) || n < 0) {
+    issues.push({ line: lineNum, severity: 'error', message: 'retries requires a non-negative integer' })
+  }
+}
+
+function validateMaxconn(lineNum, val, issues) {
+  const n = parseInt(val)
+  if (isNaN(n) || n <= 0) {
+    issues.push({ line: lineNum, severity: 'error', message: 'maxconn requires a positive integer' })
+  }
+}
+
+function validateFullconn(lineNum, val, issues) {
+  const n = parseInt(val)
+  if (isNaN(n) || n <= 0) {
+    issues.push({ line: lineNum, severity: 'error', message: 'fullconn requires a positive integer' })
+  }
+}
+
+function validateLog(lineNum, rest, issues) {
+  if (!rest || rest.trim().length === 0) {
+    issues.push({ line: lineNum, severity: 'warning', message: 'log: missing address or socket' })
+  }
+}
+
+function validateLogFormat(lineNum, rest, issues) {
+  if (!rest || rest.trim().length === 0) {
+    issues.push({ line: lineNum, severity: 'warning', message: 'log-format: missing format string' })
+  }
+}
+
+function validateHttpReuse(lineNum, val, issues) {
+  if (!VALID_HTTP_REUSE.has(val.toLowerCase())) {
+    issues.push({ line: lineNum, severity: 'warning', message: `http-reuse: unknown mode '${val}'. Valid: ${[...VALID_HTTP_REUSE].join(', ')}` })
+  }
+}
+
+function validateUniqueId(lineNum, kind, rest, issues) {
+  if (!rest || rest.trim().length === 0) {
+    issues.push({ line: lineNum, severity: 'warning', message: `${kind}: missing format/header value` })
+  }
+}
+
+function validateServerTemplate(lineNum, line, issues) {
+  const parts = line.split(/\s+/)
+  if (parts.length < 4) {
+    issues.push({ line: lineNum, severity: 'error', message: 'server-template: requires prefix, nb, address:port' })
+    return
+  }
+  const count = parseInt(parts[2])
+  if (isNaN(count) || count <= 0) {
+    issues.push({ line: lineNum, severity: 'error', message: `server-template: count must be a positive number, got '${parts[2]}'` })
+  }
+  const addrPort = parts[3]
+  const lastColon = addrPort.lastIndexOf(':')
+  if (lastColon === -1) {
+    issues.push({ line: lineNum, severity: 'error', message: `server-template: missing port in '${addrPort}'` })
+  } else {
+    const port = parseInt(addrPort.slice(lastColon + 1))
+    if (isNaN(port) || !isPort(port)) {
+      issues.push({ line: lineNum, severity: 'error', message: `server-template: invalid port '${addrPort.slice(lastColon + 1)}'` })
+    }
+  }
+}
+
+function validateUseBackend(lineNum, rest, issues, knownBackends) {
+  const parts = rest.split(/\s+/, 2)
+  if (!parts.length || !parts[0].trim()) {
+    issues.push({ line: lineNum, severity: 'error', message: 'use_backend: missing backend name' })
+    return
+  }
+  if (knownBackends && !knownBackends.has(parts[0])) {
+    issues.push({ line: lineNum, severity: 'warning', message: `use_backend '${parts[0]}': backend does not exist in this config` })
+  }
+}
+
+function validateDefaultBackend(lineNum, rest, issues, knownBackends) {
+  const name = rest.split(/\s+/)[0]
+  if (!name) {
+    issues.push({ line: lineNum, severity: 'error', message: 'default_backend: missing backend name' })
+    return
+  }
+  if (knownBackends && !knownBackends.has(name)) {
+    issues.push({ line: lineNum, severity: 'warning', message: `default_backend '${name}': backend does not exist in this config` })
+  }
+}
+
+function validateCapture(lineNum, rest, issues) {
+  const parts = rest.split(/\s+/, 2)
+  if (!parts.length) {
+    issues.push({ line: lineNum, severity: 'error', message: 'capture: requires direction (request/response) and header specification' })
+    return
+  }
+  const dir = parts[0].toLowerCase()
+  if (dir !== 'request' && dir !== 'response') {
+    issues.push({ line: lineNum, severity: 'error', message: "capture: direction must be 'request' or 'response'" })
+    return
+  }
+  if (parts.length < 2 || !parts[1].trim()) {
+    issues.push({ line: lineNum, severity: 'error', message: `capture ${dir}: missing specification` })
+  }
+}
+
+function validateMonitorFail(lineNum, rest, issues) {
+  if (!rest || rest.trim().length === 0) {
+    issues.push({ line: lineNum, severity: 'error', message: 'monitor fail: missing condition' })
+  }
+}
+
+function validateRedirect(lineNum, rest, issues) {
+  if (!rest || rest.trim().length === 0) {
+    issues.push({ line: lineNum, severity: 'error', message: 'redirect: missing rule specification' })
+  }
+}
+
+function validateCompression(lineNum, line, issues) {
+  const rest = line.slice(12).trim()
+  if (!rest) {
+    issues.push({ line: lineNum, severity: 'warning', message: 'compression: missing sub-option (algo, type, offload)' })
+    return
+  }
+  const parts = rest.split(/\s+/, 2)
+  const sub = parts[0].toLowerCase()
+  if (!['algo', 'type', 'offload'].includes(sub)) {
+    issues.push({ line: lineNum, severity: 'warning', message: `compression: unknown sub-option '${sub}'` })
+  }
+}
+
+function validateHttpCheck(lineNum, rest, issues) {
+  if (!rest || rest.trim().length === 0) {
+    issues.push({ line: lineNum, severity: 'warning', message: 'http-check: missing sub-option (expect, send, connect, disable-on-404)' })
+  }
+}
+
+function validateTcpCheck(lineNum, rest, issues) {
+  if (!rest || rest.trim().length === 0) {
+    issues.push({ line: lineNum, severity: 'warning', message: 'tcp-check: missing check content' })
+  }
+}
+
+function validateMonitorUri(lineNum, rest, issues) {
+  if (!rest || rest.trim().length === 0) {
+    issues.push({ line: lineNum, severity: 'error', message: 'monitor-uri: missing URI' })
+  }
+}
+
+function validateIgnorePersist(lineNum, rest, issues) {
+  if (!rest || rest.trim().length === 0) {
+    issues.push({ line: lineNum, severity: 'error', message: 'ignore-persist: missing condition' })
+  }
+}
+
+function validateForcePersist(lineNum, rest, issues) {
+  if (!rest || rest.trim().length === 0) {
+    issues.push({ line: lineNum, severity: 'error', message: 'force-persist: missing condition' })
+  }
+}
+
+function validateExternalCheck(lineNum, sectionType, rest, issues) {
+  if (sectionType === 'global') return
+  const parts = rest.split(/\s+/, 2)
+  const sub = parts[0].toLowerCase()
+  if (sub !== 'command' && sub !== 'path') {
+    issues.push({ line: lineNum, severity: 'warning', message: "external-check: sub-option must be 'command' or 'path'" })
+  } else if (parts.length < 2 || !parts[1].trim()) {
+    issues.push({ line: lineNum, severity: 'error', message: `external-check ${sub}: missing value` })
+  }
+}
+
+function validateGlobalDirective(lineNum, directive, rest, issues) {
+  const kl = directive.toLowerCase()
+
+  if (kl === 'log') validateLog(lineNum, rest, issues)
+  else if (kl === 'maxconn') validateMaxconn(lineNum, rest, issues)
+  else if (kl === 'nbproc' || kl === 'nbthread') {
+    const n = parseInt(rest)
+    if (isNaN(n) || n <= 0) {
+      issues.push({ line: lineNum, severity: 'error', message: `${directive}: requires a positive integer` })
+    }
+  }
+  else if (kl === 'uid' || kl === 'gid') {
+    const n = parseInt(rest)
+    if (isNaN(n)) {
+      issues.push({ line: lineNum, severity: 'error', message: `${directive}: requires a numeric value` })
+    }
+  }
+  else if (kl === 'ulimit-n' || kl === 'tune.ssl.maxrecord' ||
+           kl === 'tune.maxrewrite' || kl === 'tune.bufsize' ||
+           kl === 'tune.http.maxhdr' || kl === 'tune.rcvbuf.client' ||
+           kl === 'tune.rcvbuf.server' || kl === 'tune.sndbuf.client' ||
+           kl === 'tune.sndbuf.server') {
+    const n = parseInt(rest)
+    if (isNaN(n) || n <= 0) {
+      issues.push({ line: lineNum, severity: 'error', message: `${directive}: requires a positive integer` })
+    }
+  }
+  else if (kl === 'stats') {
+    const parts = rest.split(/\s+/, 2)
+    const sub = parts[0].toLowerCase()
+    if (!['socket', 'timeout', 'maxconn'].includes(sub)) {
+      issues.push({ line: lineNum, severity: 'warning', message: `stats: unknown sub-option '${sub}' in global. Valid: socket, timeout, maxconn` })
+    }
+  }
+  else if (kl === 'ssl-server-verify') {
+    if (!VALID_SERVER_VERIFY.has(rest.toLowerCase())) {
+      issues.push({ line: lineNum, severity: 'warning', message: `ssl-server-verify: must be 'none', 'optional', or 'required'` })
+    }
+  }
+  else if (kl === 'log-send-hostname' || kl === 'log-tag' ||
+           kl === 'chroot' || kl === 'user' || kl === 'group' ||
+           kl === 'pidfile' || kl === 'description' || kl === 'node' ||
+           kl === 'localpeer' || kl === 'ca-base' || kl === 'crt-base' ||
+           kl === 'ssl-default-bind-ciphers' ||
+           kl === 'ssl-default-bind-ciphersuites' ||
+           kl === 'ssl-default-bind-options' ||
+           kl === 'ssl-default-server-ciphers' ||
+           kl === 'ssl-default-server-ciphersuites' ||
+           kl === 'ssl-default-server-options' ||
+           kl === 'ssl-dh-param-file' ||
+           kl === 'tune.idle-pool.shared' ||
+           kl === 'numa-cpu-mapping') {
+    if (!rest) {
+      issues.push({ line: lineNum, severity: 'warning', message: `${directive}: missing value` })
+    }
+  }
+  else if (kl === 'cpu-map') {
+    if (!rest) {
+      issues.push({ line: lineNum, severity: 'warning', message: 'cpu-map: missing mapping specification' })
+    }
+  }
+  else if (kl === 'set-var' || kl === 'setenv' || kl === 'presetenv') {
+    if (!rest) {
+      issues.push({ line: lineNum, severity: 'warning', message: `${directive}: missing variable/environment specification` })
+    }
+  }
+}
+
 export function validateConfigText(text) {
   const issues = []
-  const lines = text.split('\n')
+  const sections = splitSections(text)
+  const knownBackends = new Set()
+  const namedSections = { frontends: [], backends: [], listens: [] }
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('global') ||
-        trimmed.startsWith('defaults') || trimmed.startsWith('frontend') ||
-        trimmed.startsWith('backend') || trimmed.startsWith('listen') ||
-        trimmed.startsWith('resolvers') || trimmed.startsWith('peers') ||
-        trimmed.startsWith('userlist') || trimmed.startsWith('program')) {
-      continue
+  if (!sections.length) {
+    return { valid: false, message: 'No HAProxy sections found', issues: [] }
+  }
+
+  for (const [secType, secName, secLines] of sections) {
+    if (secType === 'backend' && secName) knownBackends.add(secName)
+    if (secType === 'listen' && secName) knownBackends.add(secName)
+    if (secType === 'frontend' && secName) namedSections.frontends.push(secName)
+    if (secType === 'backend' && secName) namedSections.backends.push(secName)
+    if (secType === 'listen' && secName) namedSections.listens.push(secName)
+  }
+
+  let sectionStartLine = 1
+
+  for (const [secType, secName, secLines] of sections) {
+    let totalLinesBefore = 0
+    for (const [st, sn, sl] of sections) {
+      if (st === secType && sn === secName && sl === secLines) break
+      totalLinesBefore += sl.length + 1
     }
-    if (/^server\s/.test(trimmed)) {
-      const parts = trimmed.split(/\s+/)
-      if (parts.length < 3) issues.push({ line: i + 1, severity: 'error', message: 'Server directive missing address:port' })
-      else if (!parts[2].includes(':')) issues.push({ line: i + 1, severity: 'error', message: `Server '${parts[1]}' missing port in address` })
+    sectionStartLine = totalLinesBefore + 1
+
+    if (secType === 'frontend' && !secName) {
+      issues.push({ line: sectionStartLine, severity: 'error', message: 'frontend section requires a name' })
     }
-    if (/^bind\s/.test(trimmed)) {
-      const bindVal = trimmed.slice(5).trim()
-      if (!bindVal) issues.push({ line: i + 1, severity: 'error', message: 'Bind directive missing address:port' })
+    if (secType === 'backend' && !secName) {
+      issues.push({ line: sectionStartLine, severity: 'error', message: 'backend section requires a name' })
     }
-    if (/^default_backend\s/.test(trimmed) && !trimmed.match(/^default_backend\s+\S+/)) {
-      issues.push({ line: i + 1, severity: 'warning', message: 'default_backend has no value' })
+    if (secType === 'listen' && !secName) {
+      issues.push({ line: sectionStartLine, severity: 'error', message: 'listen section requires a name' })
     }
-    if (/^balance\s/.test(trimmed)) {
-      const val = trimmed.slice(8).trim()
-      const valid = ['roundrobin', 'leastconn', 'source', 'random', 'uri', 'hdr', 'rdp-cookie', 'first', 'static-rr']
-      if (val && !valid.includes(val) && !val.startsWith('uri ') && !val.startsWith('hdr(')) {
-        issues.push({ line: i + 1, severity: 'warning', message: `Unknown balance algorithm '${val}'` })
+
+    const hasBind = secLines.some(l => /^bind\s/i.test(l))
+    const hasServer = secLines.some(l => /^server\s/i.test(l))
+
+    if (secType === 'frontend' && !hasBind) {
+      issues.push({ line: sectionStartLine, severity: 'warning', message: "frontend '" + (secName || 'unnamed') + "': no bind directive — frontend won't accept connections" })
+    }
+    if (secType === 'backend' && !hasServer) {
+      const hasTmpl = secLines.some(l => /^server-template\s/i.test(l))
+      if (!hasTmpl) {
+        issues.push({ line: sectionStartLine, severity: 'warning', message: "backend '" + (secName || 'unnamed') + "': no server or server-template — no backends to route to" })
       }
+    }
+
+    for (let li = 0; li < secLines.length; li++) {
+      const lineNum = sectionStartLine + 1 + li
+      const line = secLines[li]
+      const [k, rest] = kvLower(line)
+
+      if (GLOBAL_DIRECTIVES.has(k) && !SHARED_DIRECTIVES.has(k)) {
+        if (secType !== 'global') {
+          issues.push({ line: lineNum, severity: 'error', message: `'${k}' is only allowed in the 'global' section, not in '${secType}'` })
+        }
+        continue
+      }
+
+      if (PROXY_DIRECTIVES.has(k) && !SHARED_DIRECTIVES.has(k)) {
+        if (secType === 'global' || secType === 'resolvers' || secType === 'peers' || secType === 'userlist' || secType === 'program') {
+          if (!FRONTEND_ONLY.has(k) && !BACKEND_ONLY.has(k)) {
+            if (secType === 'global') {
+              issues.push({ line: lineNum, severity: 'warning', message: `'${k}' is a proxy directive and is not valid in 'global' section` })
+            }
+          }
+        }
+      }
+
+      if (k === 'bind' && (secType === 'backend' || secType === 'defaults')) {
+        issues.push({ line: lineNum, severity: 'error', message: `bind is not allowed in '${secType}' sections` })
+      }
+
+      if ((k === 'server' || k === 'server-template') && secType === 'frontend') {
+        issues.push({ line: lineNum, severity: 'error', message: `${k} is not allowed in 'frontend' sections` })
+      }
+      if ((k === 'server' || k === 'server-template') && secType === 'defaults') {
+        issues.push({ line: lineNum, severity: 'error', message: `${k} is not allowed in 'defaults' sections` })
+      }
+
+      if (k === 'default_backend' && secType === 'frontend') {
+        validateDefaultBackend(lineNum, rest, issues, knownBackends)
+      }
+      else if (k === 'default_backend' && secType === 'listen') {
+        validateDefaultBackend(lineNum, rest, issues, knownBackends)
+      }
+      else if (k === 'default_backend' && secType === 'backend') {
+        issues.push({ line: lineNum, severity: 'warning', message: 'default_backend in a backend section has no effect' })
+      }
+      else if (k === 'use_backend') validateUseBackend(lineNum, rest, issues, knownBackends)
+      else if (k === 'server') validateServer(lineNum, line, issues)
+      else if (k === 'server-template') validateServerTemplate(lineNum, line, issues)
+      else if (k === 'bind') validateBind(lineNum, line, issues)
+      else if (k === 'mode') validateMode(lineNum, rest, issues)
+      else if (k === 'balance') validateBalance(lineNum, rest, issues)
+      else if (k === 'hash-type') validateHashType(lineNum, rest, issues)
+      else if (k === 'acl') validateACL(lineNum, rest, issues)
+      else if (k === 'http-request') validateHttpRequestRule(lineNum, rest, issues)
+      else if (k === 'http-response') validateHttpResponseRule(lineNum, rest, issues)
+      else if (k === 'http-after-response') validateHttpResponseRule(lineNum, rest, issues)
+      else if (k === 'tcp-request') validateTcpRequestRule(lineNum, rest, issues)
+      else if (k === 'tcp-response') validateTcpResponseRule(lineNum, rest, issues)
+      else if (k === 'cookie') validateCookie(lineNum, rest, issues)
+      else if (k === 'stick-table') validateStickTable(lineNum, rest, issues)
+      else if (k === 'option') validateOption(lineNum, secType, rest, issues)
+      else if (k === 'timeout') validateTimeout(lineNum, rest, issues)
+      else if (k === 'retries') validateRetries(lineNum, rest, issues)
+      else if (k === 'maxconn') validateMaxconn(lineNum, rest, issues)
+      else if (k === 'fullconn') validateFullconn(lineNum, rest, issues)
+      else if (k === 'log') validateLog(lineNum, rest, issues)
+      else if (k === 'log-format' || k === 'log-format-sd') validateLogFormat(lineNum, rest, issues)
+      else if (k === 'http-reuse') validateHttpReuse(lineNum, rest, issues)
+      else if (k === 'unique-id-format' || k === 'unique-id-header') validateUniqueId(lineNum, k, rest, issues)
+      else if (k === 'stats') validateStats(lineNum, rest, issues)
+      else if (k === 'source') validateSource(lineNum, rest, issues)
+      else if (k === 'capture') validateCapture(lineNum, rest, issues)
+      else if (k === 'redirect') validateRedirect(lineNum, rest, issues)
+      else if (k === 'compression') validateCompression(lineNum, line, issues)
+      else if (k === 'http-check') validateHttpCheck(lineNum, rest, issues)
+      else if (k === 'tcp-check') validateTcpCheck(lineNum, rest, issues)
+      else if (k === 'monitor-uri') validateMonitorUri(lineNum, rest, issues)
+      else if (k === 'monitor' && rest.split(/\s+/)[0].toLowerCase() === 'fail') validateMonitorFail(lineNum, rest, issues)
+      else if (k === 'ignore-persist' || k === 'ignore_persist') validateIgnorePersist(lineNum, rest, issues)
+      else if (k === 'force-persist') validateForcePersist(lineNum, rest, issues)
+      else if (k === 'external-check') validateExternalCheck(lineNum, secType, rest, issues)
+      else if (GLOBAL_DIRECTIVES.has(k)) {
+        if (secType === 'global') validateGlobalDirective(lineNum, k, rest, issues)
+      }
+    }
+  }
+
+  for (const st of ['frontend', 'backend', 'listen']) {
+    const names = st === 'frontend' ? namedSections.frontends
+      : st === 'backend' ? namedSections.backends
+      : namedSections.listens
+    const seen = new Set()
+    for (const name of names) {
+      if (seen.has(name)) {
+        issues.push({ line: 1, severity: 'error', message: `Duplicate ${st} section name '${name}'` })
+      }
+      seen.add(name)
     }
   }
 
   return {
     valid: issues.filter(i => i.severity === 'error').length === 0,
-    message: issues.length ? `${issues.length} issue(s) found` : 'No issues detected',
+    message: issues.length
+      ? `${issues.length} issue(s) found (${issues.filter(i => i.severity === 'error').length} errors, ${issues.filter(i => i.severity === 'warning').length} warnings)`
+      : 'No issues detected',
     issues,
   }
 }

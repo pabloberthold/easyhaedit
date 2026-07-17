@@ -3,9 +3,11 @@ import {
   ChevronRight, Trash2,
   Globe, Server, Settings, List,
   Activity, Database, Clock, SlidersHorizontal, FileCode,
-  Minimize2, Copy
+  Minimize2, Copy, CheckCircle2, XCircle, AlertCircle, Terminal
 } from 'lucide-react'
 import { getVersionData } from '../lib/haproxy-versions.js'
+import { serializeFrontendSection, serializeBackendSection, serializeListenSection } from '../lib/haproxy-serializer.js'
+import { validateConfigText } from '../lib/haproxy-validator.js'
 import ACLEditor        from './ACLEditor'
 import ServerEditor     from './ServerEditor'
 import HttpRulesEditor  from './HttpRulesEditor'
@@ -340,6 +342,8 @@ function SectionCard({ type, section, onUpdate, onRemove, onDuplicate, haVersion
   const [expanded, setExpanded]   = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [validationResult, setValidationResult] = useState(null)
+  const [validating, setValidating] = useState(false)
 
   useEffect(() => {
     if (!expanded) return
@@ -349,6 +353,17 @@ function SectionCard({ type, section, onUpdate, onRemove, onDuplicate, haVersion
   }, [expanded])
 
   const visibleTabs = TABS.filter(t => (TAB_VISIBILITY[type] || []).includes(t.id))
+
+  const validateSection = () => {
+    const serializer = type === 'frontend' ? serializeFrontendSection
+      : type === 'backend' ? serializeBackendSection
+      : serializeListenSection
+    const text = `global\n    daemon\ndefaults\n    mode http\n\n${serializer(section)}`
+    setValidating(true)
+    const result = validateConfigText(text, haVersion)
+    setValidationResult(result)
+    setValidating(false)
+  }
 
   const handleDelete = (e) => {
     e.stopPropagation()
@@ -435,6 +450,17 @@ function SectionCard({ type, section, onUpdate, onRemove, onDuplicate, haVersion
                 {(hreq + hresp) > 0   && <span className="text-purple-600">{hreq + hresp} http-rules</span>}
               </div>
               <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={validateSection}
+                  disabled={validating}
+                  className="btn-sm btn-secondary text-xs"
+                  title={`Validate this ${type} section (HAProxy ${haVersion})`}
+                >
+                  {validating
+                    ? <Activity size={11} className="animate-spin"/>
+                    : <Terminal size={11}/>}
+                  Validate
+                </button>
                 <span className="text-[11px] text-slate-400 hidden sm:block select-none">Esc para cerrar</span>
                 <button
                   onClick={() => setExpanded(false)}
@@ -445,6 +471,43 @@ function SectionCard({ type, section, onUpdate, onRemove, onDuplicate, haVersion
                 </button>
               </div>
             </div>
+
+            {validationResult && (
+              <div className={`shrink-0 px-5 py-2.5 border-b ${
+                validationResult.valid
+                  ? 'bg-emerald-50 border-emerald-200'
+                  : 'bg-red-50 border-red-200'
+              }`}>
+                <div className="flex items-center gap-2 mb-1">
+                  {validationResult.valid
+                    ? <CheckCircle2 size={14} className="text-emerald-600"/>
+                    : <XCircle size={14} className="text-red-600"/>}
+                  <span className={`text-xs font-semibold ${
+                    validationResult.valid ? 'text-emerald-700' : 'text-red-700'
+                  }`}>{validationResult.message}</span>
+                  <button
+                    onClick={() => setValidationResult(null)}
+                    className="ml-auto text-slate-400 hover:text-slate-600"
+                  >✕</button>
+                </div>
+                {validationResult.issues.length > 0 && (
+                  <div className="max-h-32 overflow-y-auto space-y-0.5">
+                    {validationResult.issues.map((iss, i) => (
+                      <div key={i} className="flex items-start gap-1.5 text-xs font-mono">
+                        <span className={`shrink-0 mt-0.5 ${
+                          iss.severity === 'error' ? 'text-red-500' : 'text-amber-500'
+                        }`}>
+                          {iss.severity === 'error' ? <XCircle size={10}/> : <AlertCircle size={10}/>}
+                        </span>
+                        <span className={`${
+                          iss.severity === 'error' ? 'text-red-700' : 'text-amber-700'
+                        }`}>{iss.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex-1 overflow-hidden flex flex-col">
               <EditorPanel {...editorPanelProps} expanded={true}/>

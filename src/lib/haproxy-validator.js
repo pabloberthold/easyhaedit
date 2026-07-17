@@ -126,13 +126,13 @@ const PROXY_DIRECTIVES = new Set([
   'timeout', 'retries', 'acl', 'http-request', 'http-response',
   'http-after-response', 'tcp-request', 'tcp-response', 'use_backend',
   'default_backend', 'stick-table', 'stick', 'cookie', 'compression',
-  'server', 'server-template', 'server-defaults', 'http-reuse',
+  'server', 'server-template', 'default-server', 'http-reuse',
   'http-send-name-header', 'redirect', 'source', 'ignore-persist',
   'force-persist', 'external-check', 'errorfile', 'errorloc', 'errorloc302',
   'stats', 'unique-id-format', 'unique-id-header', 'capture',
-  'monitor-uri', 'monitor', 'random', 'log-format', 'log-format-sd',
+  'monitor-uri', 'monitor', 'log-format', 'log-format-sd',
   'log-tag', 'load-server-state-from-file',
-  'http-check', 'tcp-check',
+  'http-check', 'tcp-check', 'crt', 'http-error',
 ])
 
 const FRONTEND_ONLY = new Set(['bind'])

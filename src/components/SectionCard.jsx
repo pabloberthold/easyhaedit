@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo, memo } from 'react'
 import {
-  ChevronDown, ChevronRight, Trash2,
+  ChevronRight, Trash2,
   Globe, Server, Settings, List,
   Activity, Database, Clock, SlidersHorizontal, FileCode,
-  Maximize2, Minimize2, Copy
+  Minimize2, Copy
 } from 'lucide-react'
 import { getVersionData } from '../lib/haproxy-versions.js'
 import ACLEditor        from './ACLEditor'
@@ -337,7 +337,6 @@ function EditorPanel({ type, section, onUpdate, visibleTabs, activeTab, setActiv
 }
 
 function SectionCard({ type, section, onUpdate, onRemove, onDuplicate, haVersion }) {
-  const [open, setOpen]           = useState(false)
   const [expanded, setExpanded]   = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -348,12 +347,6 @@ function SectionCard({ type, section, onUpdate, onRemove, onDuplicate, haVersion
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [expanded])
-
-  const toggleExpanded = (e) => {
-    e.stopPropagation()
-    setExpanded(x => !x)
-    if (!open) setOpen(true)
-  }
 
   const visibleTabs = TABS.filter(t => (TAB_VISIBILITY[type] || []).includes(t.id))
 
@@ -379,12 +372,10 @@ function SectionCard({ type, section, onUpdate, onRemove, onDuplicate, haVersion
       <div className={`card overflow-hidden transition-shadow ${expanded ? 'ring-2 ring-brand-400 ring-offset-2' : ''}`}>
 
         <button
-          onClick={() => { setOpen(o => !o); if (expanded) setExpanded(false) }}
+          onClick={() => setExpanded(x => !x)}
           className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left"
         >
-          {open
-            ? <ChevronDown  size={13} className="text-slate-400 shrink-0"/>
-            : <ChevronRight size={13} className="text-slate-400 shrink-0"/>}
+          <ChevronRight size={13} className="text-slate-400 shrink-0"/>
 
           <span className={TYPE_BADGE[type] || 'badge-gl'}>{type}</span>
           <span className="font-mono text-sm font-medium text-slate-700">{section.name}</span>
@@ -402,18 +393,6 @@ function SectionCard({ type, section, onUpdate, onRemove, onDuplicate, haVersion
               <span className="text-amber-600">httpchk</span>}
             {section.cookie        && <span className="text-pink-600">cookie</span>}
             {section.stick_table   && <span className="text-orange-600">stick</span>}
-
-            <button
-              onClick={toggleExpanded}
-              className={`p-1 rounded transition-all ${
-                expanded
-                  ? 'text-brand-500 bg-brand-50 hover:bg-brand-100'
-                  : 'text-slate-300 hover:text-brand-500 hover:bg-brand-50'
-              }`}
-              title={expanded ? 'Volver a inline (Esc)' : 'Expandir a pantalla completa'}
-            >
-              {expanded ? <Minimize2 size={12}/> : <Maximize2 size={12}/>}
-            </button>
 
             {onDuplicate && (
               <button
@@ -438,10 +417,6 @@ function SectionCard({ type, section, onUpdate, onRemove, onDuplicate, haVersion
             )}
           </div>
         </button>
-
-        {open && !expanded && (
-          <EditorPanel {...editorPanelProps} expanded={false}/>
-        )}
       </div>
 
       {expanded && (

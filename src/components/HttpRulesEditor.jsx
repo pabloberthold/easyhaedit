@@ -1,7 +1,8 @@
-import { useState, memo } from 'react'
+import { useState, useMemo, memo } from 'react'
 import { Plus, Trash2, Save, ChevronDown } from 'lucide-react'
+import { getVersionData } from '../lib/haproxy-versions.js'
 
-const HTTP_REQ_TEMPLATES = [
+const HTTP_REQ_TEMPLATES_BASE = [
   { label: 'set-header',     value: 'set-header X-Header value' },
   { label: 'add-header',     value: 'add-header X-Header value' },
   { label: 'del-header',     value: 'del-header X-Header' },
@@ -19,7 +20,7 @@ const HTTP_REQ_TEMPLATES = [
   { label: 'track-sc',       value: 'track-sc0 src' },
 ]
 
-const HTTP_RESP_TEMPLATES = [
+const HTTP_RESP_TEMPLATES_BASE = [
   { label: 'set-header',    value: 'set-header X-Header value' },
   { label: 'add-header',    value: 'add-header X-Header value' },
   { label: 'del-header',    value: 'del-header X-Header' },
@@ -241,7 +242,16 @@ function TcpRuleTable({ label, rules, onChange, types }) {
   )
 }
 
-function HttpRulesEditor({ section, onUpdate, sectionType }) {
+function HttpRulesEditor({ section, onUpdate, sectionType, haVersion }) {
+  const feat = useMemo(() => getVersionData(haVersion), [haVersion])
+  const reqTemplates = useMemo(() =>
+    HTTP_REQ_TEMPLATES_BASE.filter(t => feat.http_request_actions.has(t.label)),
+    [feat]
+  )
+  const respTemplates = useMemo(() =>
+    HTTP_RESP_TEMPLATES_BASE.filter(t => feat.http_request_actions.has(t.label)),
+    [feat]
+  )
   const isBackendLike = sectionType === 'backend' || sectionType === 'listen'
 
   return (
@@ -255,19 +265,19 @@ function HttpRulesEditor({ section, onUpdate, sectionType }) {
       <RuleTable
         label="http-request"
         rules={section.http_request || []}
-        templates={HTTP_REQ_TEMPLATES}
+        templates={reqTemplates}
         onChange={v => onUpdate({ ...section, http_request: v })}
       />
       <RuleTable
         label="http-response"
         rules={section.http_response || []}
-        templates={HTTP_RESP_TEMPLATES}
+        templates={respTemplates}
         onChange={v => onUpdate({ ...section, http_response: v })}
       />
       <RuleTable
         label="http-after-response"
         rules={section.http_after_response || []}
-        templates={HTTP_RESP_TEMPLATES}
+        templates={respTemplates}
         onChange={v => onUpdate({ ...section, http_after_response: v })}
       />
       {isBackendLike && (
@@ -285,5 +295,6 @@ function HttpRulesEditor({ section, onUpdate, sectionType }) {
 export default memo(HttpRulesEditor, (prev, next) =>
   JSON.stringify(prev.section) === JSON.stringify(next.section) &&
   prev.sectionType === next.sectionType &&
-  prev.onUpdate === next.onUpdate
+  prev.onUpdate === next.onUpdate &&
+  prev.haVersion === next.haVersion
 )

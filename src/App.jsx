@@ -337,15 +337,15 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
                   ))}
                 </div>
                 <SectionGroup label="Frontends" icon={Globe} color="text-blue-600" count={config.frontends?.length||0} onAdd={() => addSection('frontend')}>
-                  {config.frontends?.map((fe,i) => <SectionCard key={`fe-${i}`} type="frontend" section={fe} onUpdate={u=>updateSection('frontend',i,u)} onRemove={()=>removeSection('frontend',i)}/>)}
+                  {config.frontends?.map((fe,i) => <SectionCard key={`fe-${i}`} type="frontend" section={fe} onUpdate={u=>updateSection('frontend',i,u)} onRemove={()=>removeSection('frontend',i)} haVersion={haVersion}/>)}
                   {!config.frontends?.length && <EmptySection label="No frontends — click Add"/>}
                 </SectionGroup>
                 <SectionGroup label="Backends" icon={Server} color="text-emerald-600" count={config.backends?.length||0} onAdd={() => addSection('backend')}>
-                  {config.backends?.map((be,i) => <SectionCard key={`be-${i}`} type="backend" section={be} onUpdate={u=>updateSection('backend',i,u)} onRemove={()=>removeSection('backend',i)}/>)}
+                  {config.backends?.map((be,i) => <SectionCard key={`be-${i}`} type="backend" section={be} onUpdate={u=>updateSection('backend',i,u)} onRemove={()=>removeSection('backend',i)} haVersion={haVersion}/>)}
                   {!config.backends?.length && <EmptySection label="No backends — click Add"/>}
                 </SectionGroup>
                 <SectionGroup label="Listen" icon={Settings} color="text-purple-600" count={config.listens?.length||0} onAdd={() => addSection('listen')}>
-                  {config.listens?.map((ls,i) => <SectionCard key={`ls-${i}`} type="listen" section={ls} onUpdate={u=>updateSection('listen',i,u)} onRemove={()=>removeSection('listen',i)}/>)}
+                  {config.listens?.map((ls,i) => <SectionCard key={`ls-${i}`} type="listen" section={ls} onUpdate={u=>updateSection('listen',i,u)} onRemove={()=>removeSection('listen',i)} haVersion={haVersion}/>)}
                   {!config.listens?.length && <EmptySection label="No listen sections — click Add"/>}
                 </SectionGroup>
               </>

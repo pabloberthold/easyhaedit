@@ -1,10 +1,11 @@
-import { useState, useEffect, memo } from 'react'
+import { useState, useEffect, useMemo, memo } from 'react'
 import {
   ChevronDown, ChevronRight, Trash2,
   Globe, Server, Settings, List,
   Activity, Database, Clock, SlidersHorizontal, FileCode,
   Maximize2, Minimize2
 } from 'lucide-react'
+import { getVersionData } from '../lib/haproxy-versions.js'
 import ACLEditor        from './ACLEditor'
 import ServerEditor     from './ServerEditor'
 import HttpRulesEditor  from './HttpRulesEditor'
@@ -18,7 +19,7 @@ const TYPE_BADGE = {
   listen:   'badge-ls',
 }
 
-const BALANCE_OPTIONS = [
+const BALANCE_OPTIONS_BASE = [
   '', 'roundrobin', 'leastconn', 'source', 'random', 'uri',
   'hdr', 'rdp-cookie', 'first', 'static-rr',
 ]
@@ -39,14 +40,16 @@ const TAB_VISIBILITY = {
   listen:   ['overview', 'acls', 'httprules', 'health', 'persistence', 'timeouts', 'options'],
 }
 
-function OptionsList({ options = [], onChange }) {
+function OptionsList({ options = [], onChange, feat }) {
   const [newOpt, setNewOpt] = useState('')
-  const add = () => {
-    if (!newOpt.trim()) return
-    onChange([...options, newOpt.trim()])
+  const add = (opt) => {
+    const val = opt || newOpt.trim()
+    if (!val) return
+    onChange([...options, val])
     setNewOpt('')
   }
   const remove = (i) => onChange(options.filter((_, idx) => idx !== i))
+  const availableOptions = useMemo(() => [...feat.options].sort(), [feat])
   return (
     <div className="space-y-2">
       <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Options</h4>
@@ -67,8 +70,24 @@ function OptionsList({ options = [], onChange }) {
         <input className="input-mono py-1 flex-1" placeholder="httplog / forwardfor / redispatch …"
           value={newOpt} onChange={e => setNewOpt(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }}/>
-        <button onClick={add} className="btn-sm btn-secondary">+ Add</button>
+        <button onClick={() => add()} className="btn-sm btn-secondary">+ Add</button>
       </div>
+      <details className="text-xs text-slate-400">
+        <summary className="cursor-pointer hover:text-slate-600 font-medium">Available options for HAProxy {feat._version}</summary>
+        <div className="mt-1 flex flex-wrap gap-1 max-h-32 overflow-y-auto border border-slate-200 rounded p-1.5 bg-white">
+          {availableOptions.map(opt => (
+            <button key={opt}
+              className={`text-[11px] font-mono px-2 py-0.5 rounded transition-colors ${
+                options.includes(opt)
+                  ? 'bg-brand-100 text-brand-700 cursor-default'
+                  : 'bg-slate-50 text-slate-500 hover:bg-brand-50 hover:text-brand-600'
+              }`}
+              onClick={() => { if (!options.includes(opt)) add(opt) }}>
+              {opt}
+            </button>
+          ))}
+        </div>
+      </details>
     </div>
   )
 }
@@ -128,7 +147,8 @@ function UseBackendsTextarea({ section, onUpdate }) {
 }
 
 function EditorPanel({ type, section, onUpdate, visibleTabs, activeTab, setActiveTab,
-                       acls, hreq, hresp, expanded }) {
+                       acls, hreq, hresp, haVersion, expanded }) {
+  const feat = useMemo(() => getVersionData(haVersion), [haVersion])
 
   const srv = section.servers?.length || 0
   const estimatedRows =
@@ -205,13 +225,13 @@ function EditorPanel({ type, section, onUpdate, visibleTabs, activeTab, setActiv
                   </select>
                 </div>
 
-                {type !== 'frontend' && (
+                  {type !== 'frontend' && (
                   <div>
                     <label className="label">Balance</label>
                     <select className="input text-sm w-full"
                       value={section.balance || ''}
                       onChange={e => onUpdate({ ...section, balance: e.target.value || undefined })}>
-                      {BALANCE_OPTIONS.map(b => (
+                      {BALANCE_OPTIONS_BASE.filter(b => !b || feat.balance.has(b)).map(b => (
                         <option key={b} value={b}>{b || '— none —'}</option>
                       ))}
                     </select>
@@ -283,6 +303,7 @@ function EditorPanel({ type, section, onUpdate, visibleTabs, activeTab, setActiv
             section={section}
             onUpdate={onUpdate}
             sectionType={type}
+            haVersion={haVersion}
           />
         )}
 
@@ -313,6 +334,7 @@ function EditorPanel({ type, section, onUpdate, visibleTabs, activeTab, setActiv
           <OptionsList
             options={section.options || []}
             onChange={options => onUpdate({ ...section, options })}
+            feat={feat}
           />
         )}
 
@@ -321,7 +343,7 @@ function EditorPanel({ type, section, onUpdate, visibleTabs, activeTab, setActiv
   )
 }
 
-function SectionCard({ type, section, onUpdate, onRemove }) {
+function SectionCard({ type, section, onUpdate, onRemove, haVersion }) {
   const [open, setOpen]           = useState(false)
   const [expanded, setExpanded]   = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
@@ -356,7 +378,7 @@ function SectionCard({ type, section, onUpdate, onRemove }) {
   const editorPanelProps = {
     type, section, onUpdate, visibleTabs,
     activeTab, setActiveTab,
-    acls, hreq, hresp,
+    acls, hreq, hresp, haVersion: haVersion,
   }
 
   return (
@@ -461,5 +483,6 @@ export default memo(SectionCard, (prev, next) =>
   JSON.stringify(prev.section) === JSON.stringify(next.section) &&
   prev.type === next.type &&
   prev.onUpdate === next.onUpdate &&
-  prev.onRemove === next.onRemove
+  prev.onRemove === next.onRemove &&
+  prev.haVersion === next.haVersion
 )

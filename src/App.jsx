@@ -437,8 +437,7 @@ export default function App() {
   const [dirty, setDirty] = useState(false)
   const histRef = useRef([])
   const histPosRef = useRef(-1)
-  const [canUndo, setCanUndo] = useState(false)
-  const [canRedo, setCanRedo] = useState(false)
+  const [histVer, setHistVer] = useState(0)
 
   const pushHistory = useCallback((cfg) => {
     const h = histRef.current
@@ -448,16 +447,22 @@ export default function App() {
     if (trimmed.length > 100) trimmed.shift()
     histRef.current = trimmed
     histPosRef.current = trimmed.length - 1
-    setCanUndo(trimmed.length > 1)
-    setCanRedo(false)
+    setHistVer(v => v + 1)
   }, [])
 
   const setConfig = useCallback((val) => {
-    rawSetConfig(prev => {
-      const next = typeof val === 'function' ? val(prev) : val
-      if (next !== prev) pushHistory(next)
-      return next
-    })
+    if (typeof val === 'function') {
+      rawSetConfig(prev => {
+        const next = val(prev)
+        if (next !== prev) pushHistory(next)
+        return next
+      })
+    } else {
+      rawSetConfig(prev => {
+        if (val !== prev) pushHistory(val)
+        return val
+      })
+    }
   }, [pushHistory])
 
   const undo = useCallback(() => {
@@ -465,8 +470,7 @@ export default function App() {
     if (pos <= 0) return
     histPosRef.current = pos - 1
     rawSetConfig(histRef.current[pos - 1])
-    setCanUndo(histPosRef.current > 0)
-    setCanRedo(true)
+    setHistVer(v => v + 1)
   }, [])
 
   const redo = useCallback(() => {
@@ -475,9 +479,11 @@ export default function App() {
     if (pos >= h.length - 1) return
     histPosRef.current = pos + 1
     rawSetConfig(h[pos + 1])
-    setCanUndo(true)
-    setCanRedo(pos + 1 < h.length - 1)
+    setHistVer(v => v + 1)
   }, [])
+
+  const canUndo = histPosRef.current > 0
+  const canRedo = histPosRef.current < histRef.current.length - 1
 
   useEffect(() => {
     const handler = (e) => {

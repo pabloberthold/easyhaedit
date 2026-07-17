@@ -65,7 +65,7 @@ function BindRow({ line, onChange, onRemove, feat }) {
           <div className="text-xs text-slate-400 mb-2">
             Toggle params for <code className="font-mono text-slate-600 bg-white px-1 rounded">{address}</code>:
           </div>
-          <div className="flex flex-wrap gap-1 max-h-36 overflow-y-auto border border-slate-200 rounded p-1.5 bg-white">
+          <div className="flex flex-wrap gap-1 max-h-80 overflow-y-auto border border-slate-200 rounded p-1.5 bg-white">
             {availableParams.map(p => {
               const active = params.includes(p)
               return (

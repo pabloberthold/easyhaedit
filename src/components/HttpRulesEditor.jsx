@@ -1,4 +1,5 @@
-import { useState, useMemo, memo } from 'react'
+import { useState, useRef, useEffect, useMemo, memo } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, Trash2, Save, ChevronDown } from 'lucide-react'
 import { getVersionData } from '../lib/haproxy-versions.js'
 
@@ -35,7 +36,25 @@ const TCP_REQ_TYPES = ['connection', 'content', 'session', 'inspect-delay']
 
 function RuleRow({ rule, onUpdate, onRemove, templates }) {
   const [showTpl, setShowTpl] = useState(false)
+  const [tplPos, setTplPos] = useState(null)
+  const btnRef = useRef(null)
   const set = (field, val) => onUpdate({ ...rule, [field]: val })
+
+  useEffect(() => {
+    if (!showTpl) { setTplPos(null); return }
+    const update = () => {
+      if (!btnRef.current) return
+      const rect = btnRef.current.getBoundingClientRect()
+      setTplPos({ top: rect.bottom + 4, left: rect.left, width: Math.max(220, rect.width) })
+    }
+    update()
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
+  }, [showTpl])
 
   return (
     <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 group">
@@ -49,13 +68,16 @@ function RuleRow({ rule, onUpdate, onRemove, templates }) {
           />
           {templates && (
             <>
-              <button
+              <button ref={btnRef}
                 className="absolute right-1 text-slate-300 hover:text-slate-600"
                 onClick={() => setShowTpl(s => !s)}
                 title="Insert template"
               ><ChevronDown size={11}/></button>
-              {showTpl && (
-                <div className="absolute top-full left-0 z-20 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[220px]">
+              {showTpl && tplPos && createPortal(
+                <div
+                  className="fixed z-[90] bg-white border border-slate-200 rounded-lg shadow-lg py-1"
+                  style={{ top: tplPos.top, left: tplPos.left, minWidth: 220 }}
+                >
                   {templates.map(t => (
                     <button key={t.value}
                       className="w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-brand-50 hover:text-brand-700"
@@ -64,7 +86,8 @@ function RuleRow({ rule, onUpdate, onRemove, templates }) {
                       <span className="text-slate-400 ml-2">{t.value}</span>
                     </button>
                   ))}
-                </div>
+                </div>,
+                document.body
               )}
             </>
           )}

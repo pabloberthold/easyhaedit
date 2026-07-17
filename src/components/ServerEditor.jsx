@@ -190,7 +190,7 @@ function ServerRow({ row, onUpdate, onRemove, feat }) {
               <summary className="cursor-pointer hover:text-slate-600 font-medium">
                 Available params for HAProxy {feat?._version}
               </summary>
-              <div className="mt-1 flex flex-wrap gap-1 max-h-28 overflow-y-auto border border-slate-200 rounded p-1.5 bg-white">
+              <div className="mt-1 flex flex-wrap gap-1 max-h-80 overflow-y-auto border border-slate-200 rounded p-1.5 bg-white">
                 {availableParams.map(p => {
                   const active = (row.extra_params || []).includes(p)
                   return (

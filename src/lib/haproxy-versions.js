@@ -119,6 +119,7 @@ const VERSION_FEATURES = {
       'http-drop-request-trailers', 'http-drop-response-trailers', 'srvtcpka-cnt',
       'srvtcpka-idle', 'srvtcpka-intvl', 'clitcpka-cnt', 'clitcpka-idle',
       'clitcpka-intvl', 'max-keep-alive-queue', 'max-session-srv-conns',
+      'http-check', 'tcp-check',
     ]),
   },
   '2.5': {

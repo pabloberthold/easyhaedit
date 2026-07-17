@@ -132,6 +132,7 @@ const PROXY_DIRECTIVES = new Set([
   'stats', 'unique-id-format', 'unique-id-header', 'capture',
   'monitor-uri', 'monitor', 'random', 'log-format', 'log-format-sd',
   'log-tag', 'load-server-state-from-file',
+  'http-check', 'tcp-check',
 ])
 
 const FRONTEND_ONLY = new Set(['bind'])

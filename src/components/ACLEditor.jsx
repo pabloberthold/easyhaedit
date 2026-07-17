@@ -93,7 +93,7 @@ function OptionDropdown({ value, onChange }) {
     const update = () => {
       if (!ref.current) return
       const rect = ref.current.getBoundingClientRect()
-      setPos({ top: rect.bottom + 4, left: rect.left, width: Math.max(280, rect.width) })
+      setPos({ top: rect.bottom + 4, left: rect.left + rect.width / 2, width: Math.max(280, rect.width) })
     }
     update()
     window.addEventListener('scroll', update, true)
@@ -125,7 +125,7 @@ function OptionDropdown({ value, onChange }) {
       {open && pos && createPortal(
         <div
           className="fixed z-[90] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-xl"
-          style={{ top: pos.top, left: pos.left, width: pos.width, maxHeight: 320, overflowY: 'auto' }}
+          style={{ top: pos.top, left: pos.left, width: pos.width, maxHeight: 320, overflowY: 'auto', transform: 'translateX(-50%)' }}
         >
           <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 px-2 py-1.5">
             <input

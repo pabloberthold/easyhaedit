@@ -45,7 +45,7 @@ function RuleRow({ rule, onUpdate, onRemove, templates }) {
     const update = () => {
       if (!btnRef.current) return
       const rect = btnRef.current.getBoundingClientRect()
-      setTplPos({ top: rect.bottom + 4, left: rect.left, width: Math.max(220, rect.width) })
+      setTplPos({ top: rect.bottom + 4, left: rect.left + rect.width / 2, width: Math.max(220, rect.width) })
     }
     update()
     window.addEventListener('scroll', update, true)
@@ -76,7 +76,7 @@ function RuleRow({ rule, onUpdate, onRemove, templates }) {
               {showTpl && tplPos && createPortal(
                 <div
                   className="fixed z-[90] bg-white border border-slate-200 rounded-lg shadow-lg py-1"
-                  style={{ top: tplPos.top, left: tplPos.left, minWidth: 220 }}
+                  style={{ top: tplPos.top, left: tplPos.left, minWidth: 220, transform: 'translateX(-50%)' }}
                 >
                   {templates.map(t => (
                     <button key={t.value}

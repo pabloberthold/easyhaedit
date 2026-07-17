@@ -4,7 +4,7 @@ Editor visual de configuración de HAProxy — sitio estático 100% client-side.
 
 ## Características
 
-- **Edición visual** de secciones frontend, backend y listen con paneles con pestañas (Overview, ACLs, HTTP Rules, Health Check, Persistence, Timeouts, Options)
+- **Edición visual modal** — cada sección (frontend, backend, listen) se abre como popup a pantalla completa con pestañas (Overview, ACLs, HTTP Rules, Health Check, Persistence, Timeouts, Options)
 - **Diagrama de flujo** — auto-layout SVG mostrando FE → ACL/routes → backends → servers con zoom, filtros y tooltips del config raw
 - **Editor raw** — edición directa del texto cfg con feedback de parseo en vivo
 - **Parser/serializer** — puerto JavaScript fiel del parser Python original de haproxy
@@ -22,6 +22,7 @@ Editor visual de configuración de HAProxy — sitio estático 100% client-side.
 - **Duplicación de secciones** — clonar frontend/backend/listen con un click
 - **Búsqueda de secciones** — filtro por nombre en el editor visual
 - **Undo/Redo** — historial de cambios (Ctrl+Z / Ctrl+Shift+Z)
+- **Validación por sección** — botón Validate en cada modal para validar la sección individual contra la versión HAProxy seleccionada
 - **Auto-validate** — Al cambiar versión HAProxy se re-ejecuta validación automáticamente
 - **GitHub Pages** — deploy automatizado via GitHub Actions
 
@@ -48,16 +49,16 @@ src/
 │   ├── haproxy-validator.js   # Validador sintáctico/semántico
 │   └── haproxy-versions.js    # Perfiles de versión HAProxy 2.4-3.4
 ├── components/
-│   ├── SectionCard.jsx        # Editor visual por sección
+│   ├── SectionCard.jsx        # Editor visual por sección (modal popup con pestañas + validación)
 │   ├── ServerEditor.jsx       # Editor de servidores (version-aware)
 │   ├── BindEditor.jsx         # Editor estructurado de bind params
-│   ├── ACLEditor.jsx          # Editor de ACLs
-│   ├── HttpRulesEditor.jsx    # Reglas HTTP/TCP
+│   ├── ACLEditor.jsx          # Editor de ACLs con dropdown de criterios portaleado
+│   ├── HttpRulesEditor.jsx    # Reglas HTTP/TCP con templates portaleados
 │   ├── HealthCheckEditor.jsx  # Health checks
 │   ├── PersistenceEditor.jsx  # Cookie, stick-table
 │   ├── TimeoutsEditor.jsx     # Timeouts
 │   ├── FlowDiagram.jsx        # Diagrama de flujo SVG
-│   └── ValidationPanel.jsx    # Panel de resultados de validación
+│   └── ValidationPanel.jsx    # Panel de resultados de validación global
 ├── App.jsx
 └── main.jsx
 ```

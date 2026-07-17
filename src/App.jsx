@@ -38,7 +38,7 @@ backend web_backend
     server web01 10.0.0.1:80 check
 `
 
-const APP_VERSION = '1.2.0'
+const APP_VERSION = '1.3.0'
 const LOCAL_SESSION_KEY = 'easyhaedit_local_cfg'
 
 function Notification({ notif }) {

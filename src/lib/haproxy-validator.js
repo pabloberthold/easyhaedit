@@ -166,18 +166,59 @@ function validateBind(lineNum, line, issues, feat) {
 }
 
 function validateBindParams(lineNum, params, issues, feat) {
+  const needsVal = new Set([
+    'accept-proxy', 'alpn', 'backlog', 'ca-file', 'ca-ignore-err',
+    'ca-sign-file', 'ca-sign-pass', 'ca-verify-file', 'ciphers',
+    'ciphersuites', 'crl-file', 'crl-ignore-err', 'crt', 'crt-ignore-err',
+    'crt-list', 'curves', 'ecdhe', 'gid', 'group', 'id', 'interface',
+    'level', 'maxconn', 'mode', 'mss', 'name', 'nice', 'npn', 'process',
+    'protect', 'proto', 'quic-cc-algo', 'quic-retry-impact-key',
+    'tcp-ut', 'thread', 'uid', 'user', 'verify',
+  ])
+  const noVal = new Set([
+    'accept-nproxy', 'allow-0rtt', 'defer-accept', 'expose-fd',
+    'force-sslv3', 'force-tlsv10', 'force-tlsv11', 'force-tlsv12',
+    'force-tlsv13', 'generate-certificates', 'no-sslv3', 'no-tlsv10',
+    'no-tlsv11', 'no-tlsv12', 'no-tlsv13', 'prefer-client-ciphers',
+    'quic', 'quic-force-retry', 'quic-socket', 'ssl', 'strict-sni',
+    'tfo', 'transparent', 'v4v6', 'v6only',
+  ])
+  let hasSsl = false, hasQuic = false
+
   let i = 0
   while (i < params.length) {
-    const p = params[i]
-    if (!p.startsWith('ssl') && feat.bind_params.has(p) && i + 1 < params.length) {
-      if (['quic', 'quic-cc-algo', 'quic-force-retry', 'quic-retry-impact-key', 'quic-socket'].includes(p) &&
-          !feat.bind_params.has(p)) {
+    const p = params[i].toLowerCase()
+
+    if (p === 'ssl') hasSsl = true
+    if (p === 'quic') hasQuic = true
+
+    if (noVal.has(p)) {
+      if (!feat.bind_params.has(p)) {
         issues.push({ line: lineNum, severity: 'warning', message: `bind: '${p}' requires HAProxy ${feat._version}+` })
       }
-      i += 2
-    } else {
       i++
     }
+    else if (needsVal.has(p)) {
+      if (!feat.bind_params.has(p)) {
+        issues.push({ line: lineNum, severity: 'warning', message: `bind: '${p}' requires HAProxy ${feat._version}+` })
+      }
+      if (i + 1 >= params.length) {
+        issues.push({ line: lineNum, severity: 'error', message: `bind: ${p} requires a value` })
+        i++
+      } else i += 2
+    }
+    else if (feat.bind_params.has(p)) {
+      if (i + 1 >= params.length) { i++ }
+      else i += 2
+    }
+    else {
+      issues.push({ line: lineNum, severity: 'warning', message: `bind: unknown parameter '${params[i]}' for HAProxy ${feat._version}` })
+      i++
+    }
+  }
+
+  if (hasQuic && !hasSsl) {
+    issues.push({ line: lineNum, severity: 'warning', message: 'bind: quic requires ssl — add the ssl parameter' })
   }
 }
 
@@ -320,19 +361,32 @@ function validateHttpRequestRule(lineNum, rest, issues, feat) {
   }
 }
 
-function validateHttpResponseRule(lineNum, rest, issues) {
+function validateHttpResponseRule(lineNum, rest, issues, feat) {
   if (!rest || rest.trim().length === 0) {
     issues.push({ line: lineNum, severity: 'error', message: 'http-response: missing action' })
+    return
+  }
+  const action = rest.split(/\s+/)[0].toLowerCase()
+  if (feat && !feat.http_request_actions.has(action)) {
+    issues.push({ line: lineNum, severity: 'warning', message: `http-response: unknown action '${action}' for HAProxy ${feat._version}` })
   }
 }
 
-function validateTcpRequestRule(lineNum, rest, issues) {
+function validateTcpRequestRule(lineNum, rest, issues, feat) {
   const parts = rest.split(/\s+/)
   if (!parts.length || !VALID_TCP_REQUEST_TYPES.has(parts[0].toLowerCase())) {
     issues.push({ line: lineNum, severity: 'error', message: `tcp-request: requires a valid type (connection, content, session, inspect-delay)` })
+    return
   }
   if (parts.length < 2) {
     issues.push({ line: lineNum, severity: 'error', message: 'tcp-request: missing action after type' })
+    return
+  }
+  if (parts[0].toLowerCase() === 'content') {
+    const action = parts[1].toLowerCase()
+    if (!feat.http_request_actions.has(action)) {
+      issues.push({ line: lineNum, severity: 'warning', message: `tcp-request content: unknown action '${action}' for HAProxy ${feat._version}` })
+    }
   }
 }
 
@@ -727,6 +781,22 @@ export function validateConfigText(text, version = '2.9') {
       issues.push({ line: sectionStartLine, severity: 'error', message: 'listen section requires a name' })
     }
 
+    if (secType === 'program') {
+      issues.push({ line: sectionStartLine, severity: 'warning', message: 'program section is removed in HAProxy 3.3+ — consider Lua scripts or other alternatives' })
+    }
+    if (secType === 'crt-store' && !feat.proxy_dirs.has('crt-store')) {
+      issues.push({ line: sectionStartLine, severity: 'warning', message: `crt-store section requires HAProxy 3.0+ (current: ${feat._version})` })
+    }
+    if (secType === 'log-profile' && !feat.proxy_dirs.has('log-profile')) {
+      issues.push({ line: sectionStartLine, severity: 'warning', message: `log-profile section requires HAProxy 3.1+ (current: ${feat._version})` })
+    }
+    if (secType === 'traces') {
+      issues.push({ line: sectionStartLine, severity: 'warning', message: `traces section requires HAProxy 3.1+ (current: ${feat._version})` })
+    }
+    if (secType === 'acme' && !feat.global_dirs.has('acme')) {
+      issues.push({ line: sectionStartLine, severity: 'warning', message: `acme section requires HAProxy 3.2+ (experimental, current: ${feat._version})` })
+    }
+
     const hasBind = secLines.some(l => /^bind\s/i.test(l))
     const hasServer = secLines.some(l => /^server\s/i.test(l))
 
@@ -745,6 +815,10 @@ export function validateConfigText(text, version = '2.9') {
       const line = secLines[li]
       const [k, rest] = kvLower(line)
 
+      if (k === 'master-worker' && secType === 'global') {
+        issues.push({ line: lineNum, severity: 'warning', message: 'master-worker is deprecated in HAProxy 3.3+ — use -W or -Ws command-line arguments instead' })
+      }
+
       if (GLOBAL_DIRECTIVES.has(k) && !SHARED_DIRECTIVES.has(k)) {
         if (secType !== 'global') {
           issues.push({ line: lineNum, severity: 'error', message: `'${k}' is only allowed in the 'global' section, not in '${secType}'` })
@@ -762,6 +836,16 @@ export function validateConfigText(text, version = '2.9') {
         }
       }
 
+      if (!GLOBAL_DIRECTIVES.has(k) && !PROXY_DIRECTIVES.has(k) && !SHARED_DIRECTIVES.has(k)) {
+        if (secType === 'global' && !feat.global_dirs.has(k)) {
+          issues.push({ line: lineNum, severity: 'warning', message: `'${k}': unknown or unsupported global directive for HAProxy ${feat._version}` })
+        } else if (secType !== 'global' && secType !== 'resolvers' && secType !== 'peers' && secType !== 'userlist' && secType !== 'program') {
+          if (!feat.proxy_dirs.has(k)) {
+            issues.push({ line: lineNum, severity: 'warning', message: `'${k}': unknown or unsupported directive for HAProxy ${feat._version}` })
+          }
+        }
+      }
+
       if (k === 'bind' && (secType === 'backend' || secType === 'defaults')) {
         issues.push({ line: lineNum, severity: 'error', message: `bind is not allowed in '${secType}' sections` })
       }
@@ -772,6 +856,17 @@ export function validateConfigText(text, version = '2.9') {
       if ((k === 'server' || k === 'server-template') && secType === 'defaults') {
         issues.push({ line: lineNum, severity: 'error', message: `${k} is not allowed in 'defaults' sections` })
       }
+
+      if (k === 'dispatch') {
+        issues.push({ line: lineNum, severity: 'error', message: 'dispatch is removed in HAProxy 3.3+ — use server or use_backend instead' })
+      }
+      if (k === 'option' && rest.startsWith('transparent')) {
+        issues.push({ line: lineNum, severity: 'error', message: 'option transparent is removed in HAProxy 3.3+ — use a different approach to handle transparent proxying' })
+      }
+      if (k === 'master-worker' && secType === 'global') {
+        issues.push({ line: lineNum, severity: 'warning', message: 'master-worker is deprecated in HAProxy 3.3+ — use -W or -Ws command-line arguments instead' })
+      }
+
 
       if (k === 'default_backend' && secType === 'frontend') {
         validateDefaultBackend(lineNum, rest, issues, knownBackends)
@@ -791,9 +886,9 @@ export function validateConfigText(text, version = '2.9') {
       else if (k === 'hash-type') validateHashType(lineNum, rest, issues)
       else if (k === 'acl') validateACL(lineNum, rest, issues)
       else if (k === 'http-request') validateHttpRequestRule(lineNum, rest, issues, feat)
-      else if (k === 'http-response') validateHttpResponseRule(lineNum, rest, issues)
-      else if (k === 'http-after-response') validateHttpResponseRule(lineNum, rest, issues)
-      else if (k === 'tcp-request') validateTcpRequestRule(lineNum, rest, issues)
+      else if (k === 'http-response') validateHttpResponseRule(lineNum, rest, issues, feat)
+      else if (k === 'http-after-response') validateHttpResponseRule(lineNum, rest, issues, feat)
+      else if (k === 'tcp-request') validateTcpRequestRule(lineNum, rest, issues, feat)
       else if (k === 'tcp-response') validateTcpResponseRule(lineNum, rest, issues)
       else if (k === 'cookie') validateCookie(lineNum, rest, issues)
       else if (k === 'stick-table') validateStickTable(lineNum, rest, issues)

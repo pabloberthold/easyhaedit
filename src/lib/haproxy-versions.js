@@ -1,6 +1,6 @@
-export const HAPROXY_VERSIONS = ['2.4', '2.5', '2.6', '2.7', '2.8', '2.9', '3.0', '3.1']
+export const HAPROXY_VERSIONS = ['2.4', '2.5', '2.6', '2.7', '2.8', '2.9', '3.0', '3.1', '3.2', '3.3', '3.4']
 
-export const DEFAULT_VERSION = '2.9'
+export const DEFAULT_VERSION = '3.0'
 
 const VERSION_FEATURES = {
   '2.4': {
@@ -101,7 +101,7 @@ const VERSION_FEATURES = {
       'redirect', 'source', 'ignore-persist', 'force-persist',
       'external-check', 'errorfile', 'errorloc', 'errorloc302',
       'stats', 'unique-id-format', 'unique-id-header',
-      'capture', 'monitor-uri', 'monitor', 'random', 'bind',
+      'capture',       'monitor-uri', 'monitor', 'random', 'bind', 'filter',
       'log-format', 'log-format-sd', 'log-tag',
       'load-server-state-from-file', 'dynamic-cookie-key',
     ]),
@@ -155,18 +155,121 @@ const VERSION_FEATURES = {
     bind_params_added: new Set([]),
   },
   '3.0': {
-    global_dirs_added: new Set([]),
-    proxy_dirs_added: new Set([]),
+    global_dirs_added: new Set([
+      'harden.reject-privileged-ports.tcp', 'harden.reject-privileged-ports.quic',
+      'ssl-security-level', 'stats-file', 'http-err-codes', 'http-fail-codes',
+      'thread-hard-limit', 'key-base', 'issuers-chain-path', 'default-path',
+      'fd-hard-limit', 'no-quic', 'expose-deprecated-directives',
+      'ocsp-update.disable', 'ocsp-update.maxdelay', 'ocsp-update.mindelay',
+      'ocsp-update.httpproxy', 'ocsp-update.mode',
+      'grace', 'limited-quic', 'prealloc-fd', 'set-dumpable',
+      'insecure-setuid-wanted', 'pp2-never-send-local',
+      'h1-accept-payload-with-any-method', 'h1-do-not-close-on-insecure-transfer-encoding',
+      'ssl-default-bind-client-sigalgs', 'ssl-default-bind-curves',
+      'ssl-default-bind-sigalgs', 'ssl-default-server-client-sigalgs',
+      'ssl-default-server-curves', 'ssl-default-server-sigalgs',
+      'ssl-propquery', 'ssl-provider', 'ssl-provider-path',
+      'ssl-skip-self-issued-ca', 'unix-bind', 'ssl-security-level',
+    ]),
+    proxy_dirs_added: new Set([
+      'guid', 'crt-store',
+    ]),
     options_added: new Set([]),
+    http_request_actions_added: new Set([
+      'set-fc-mark', 'set-fc-tos', 'set-bc-mark', 'set-bc-tos',
+    ]),
+    server_params_added: new Set([
+      'guid', 'namespace',
+    ]),
+    bind_params_added: new Set([
+      'default-crt', 'namespace',
+    ]),
+  },
+  '3.1': {
+    global_dirs_added: new Set([
+      'tune.h2.fe.rxbuf', 'tune.h2.be.rxbuf',
+      'tune.renice.startup', 'tune.renice.runtime',
+      'tune.quic.cc.cubic.min-losses',
+      'crt-store', 'log-profile', 'traces',
+    ]),
+    proxy_dirs_added: new Set([
+      'quic-initial', 'log-profile',
+    ]),
+    options_added: new Set([
+      'accept-unsafe-violations-in-http-request',
+      'accept-unsafe-violations-in-http-response',
+    ]),
+    http_request_actions_added: new Set([
+      'set-retries', 'do-log',
+    ]),
+    server_params_added: new Set([
+      'init-state',
+    ]),
+    bind_params_added: new Set([]),
+  },
+  '3.2': {
+    global_dirs_added: new Set([
+      'cpu-policy', 'cpu-set', 'dns-accept-family',
+      'tune.notsent-lowat.client', 'tune.notsent-lowat.server',
+      'tune.glitches.kill.cpu-usage',
+      'tune.quic.frontend.stream-data-ratio',
+      'tune.quic.frontend.max-tx-mem',
+      'acme',
+    ]),
+    proxy_dirs_added: new Set([
+      'ssl-f-use',
+    ]),
+    options_added: new Set([
+      'host',
+    ]),
+    http_request_actions_added: new Set([]),
     server_params_added: new Set([]),
     bind_params_added: new Set([]),
   },
-  '3.1': {
-    global_dirs_added: new Set([]),
+  '3.3': {
+    global_dirs_added: new Set([
+      'ssl-passphrase-cmd', 'tune.quic.listen',
+      'shm-stats-file', 'tune.quic.mem.tx-max',
+      'tune.quic.fe.cc.cubic-min-losses', 'tune.quic.fe.cc.hystart',
+      'tune.quic.fe.cc.max-frame-loss', 'tune.quic.fe.cc.max-win-size',
+      'tune.quic.fe.cc.reorder-ratio', 'tune.quic.fe.max-idle-timeout',
+      'tune.quic.fe.sec.glitches-threshold', 'tune.quic.fe.stream.data-ratio',
+      'tune.quic.fe.stream.max-concurrent', 'tune.quic.fe.stream.rxbuf',
+      'tune.quic.fe.tx.pacing', 'tune.quic.fe.tx.udp-gso',
+      'tune.quic.be.cc.cubic-min-losses', 'tune.quic.be.cc.hystart',
+      'tune.quic.be.cc.max-frame-loss', 'tune.quic.be.cc.max-win-size',
+      'tune.quic.be.cc.reorder-ratio', 'tune.quic.be.max-idle-timeout',
+      'tune.quic.be.sec.glitches-threshold', 'tune.quic.be.stream.data-ratio',
+      'tune.quic.be.stream.max-concurrent', 'tune.quic.be.stream.rxbuf',
+      'tune.quic.be.tx.pacing', 'tune.quic.be.tx.udp-gso',
+    ]),
     proxy_dirs_added: new Set([]),
-    options_added: new Set([]),
+    options_added: new Set(['splice-auto']),
+    http_request_actions_added: new Set([]),
+    server_params_added: new Set([
+      'sni-auto', 'no-sni-auto', 'check-sni-auto', 'no-check-sni-auto',
+      'tcp-md5sig', 'cc', 'quic-cc-algo',
+    ]),
+    bind_params_added: new Set([
+      'ech', 'tcp-md5sig', 'ktls',
+    ]),
+  },
+  '3.4': {
+    global_dirs_added: new Set([
+      'tune.bufsize.large', 'tune.bufsize.small',
+      'tune.cli.max-payload-size', 'tune.lua.openlibs',
+      'tune.quic.fe.stream.max-total',
+      'tune.h2.fe.max-frames-at-once', 'tune.h2.be.max-frames-at-once',
+      'tune.h2.fe.max-rst-at-once', 'tune.h2.log-errors',
+      'cpu-affinity', 'max-threads-per-group',
+    ]),
+    proxy_dirs_added: new Set([
+      'filter-sequence',
+    ]),
+    options_added: new Set(['use-small-buffers']),
+    http_request_actions_added: new Set([]),
     server_params_added: new Set([]),
-    bind_params_added: new Set([]),
+    bind_params_added: new Set(['qmux']),
   },
 }
 

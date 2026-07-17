@@ -74,6 +74,7 @@ function OptionDropdown({ value, onChange }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const ref = useRef(null)
+  const portalRef = useRef(null)
   const [pos, setPos] = useState(null)
 
   const selectedOpt = ACL_OPTIONS.find(o => o.value === value)
@@ -83,7 +84,11 @@ function OptionDropdown({ value, onChange }) {
 
   useEffect(() => {
     if (!open) return
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    const handler = (e) => {
+      if (ref.current && ref.current.contains(e.target)) return
+      if (portalRef.current && portalRef.current.contains(e.target)) return
+      setOpen(false)
+    }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
@@ -123,7 +128,7 @@ function OptionDropdown({ value, onChange }) {
       </button>
 
       {open && pos && createPortal(
-        <div
+        <div ref={portalRef}
           className="fixed z-[90] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-xl"
           style={{ top: pos.top, left: pos.left, width: pos.width, maxHeight: 320, overflowY: 'auto', transform: 'translateX(-50%)' }}
         >

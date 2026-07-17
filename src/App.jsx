@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useReducer } from 'react'
 import {
   Upload, Download, Eye, RefreshCw, Terminal, Code2, Pencil, Workflow,
   Plus, Trash2, Globe, Server, Settings, FileText,
@@ -433,57 +433,37 @@ export default function App() {
   const [rawCfg, setRawCfg] = useState(() => {
     try { return sessionStorage.getItem(LOCAL_SESSION_KEY) || SAMPLE_CFG } catch { return SAMPLE_CFG }
   })
-  const [config, rawSetConfig] = useState(null)
   const [dirty, setDirty] = useState(false)
-  const histRef = useRef([])
-  const histPosRef = useRef(-1)
-  const [histVer, setHistVer] = useState(0)
 
-  const pushHistory = useCallback((cfg) => {
-    const h = histRef.current
-    const pos = histPosRef.current
-    const trimmed = h.slice(0, pos + 1)
-    trimmed.push(JSON.parse(JSON.stringify(cfg)))
-    if (trimmed.length > 100) trimmed.shift()
-    histRef.current = trimmed
-    histPosRef.current = trimmed.length - 1
-    setHistVer(v => v + 1)
-  }, [])
-
-  const setConfig = useCallback((val) => {
-    if (typeof val === 'function') {
-      rawSetConfig(prev => {
-        const next = val(prev)
-        if (next !== prev) pushHistory(next)
-        return next
-      })
-    } else {
-      rawSetConfig(prev => {
-        if (val !== prev) pushHistory(val)
-        return val
-      })
+  const [cfgState, dispatch] = useReducer((state, action) => {
+    switch (action.type) {
+      case 'SET_CONFIG': {
+        const next = action.payload
+        if (next === state.config) return state
+        const h = state.history.slice(0, state.pos + 1)
+        h.push(JSON.parse(JSON.stringify(next)))
+        if (h.length > 100) h.shift()
+        return { ...state, config: next, history: h, pos: h.length - 1 }
+      }
+      case 'UNDO': {
+        if (state.pos <= 0) return state
+        return { ...state, config: state.history[state.pos - 1], pos: state.pos - 1 }
+      }
+      case 'REDO': {
+        if (state.pos >= state.history.length - 1) return state
+        return { ...state, config: state.history[state.pos + 1], pos: state.pos + 1 }
+      }
+      default: return state
     }
-  }, [pushHistory])
+  }, { config: null, history: [], pos: -1 })
 
-  const undo = useCallback(() => {
-    const pos = histPosRef.current
-    if (pos <= 0) return
-    histPosRef.current = pos - 1
-    rawSetConfig(histRef.current[pos - 1])
-    setHistVer(v => v + 1)
-  }, [])
+  const { config } = cfgState
+  const canUndo = cfgState.pos > 0
+  const canRedo = cfgState.pos < cfgState.history.length - 1
 
-  const redo = useCallback(() => {
-    const h = histRef.current
-    const pos = histPosRef.current
-    if (pos >= h.length - 1) return
-    histPosRef.current = pos + 1
-    rawSetConfig(h[pos + 1])
-    setHistVer(v => v + 1)
-  }, [])
-
-  const canUndo = histPosRef.current > 0
-  const canRedo = histPosRef.current < histRef.current.length - 1
+  const setConfig = useCallback((val) => dispatch({ type: 'SET_CONFIG', payload: val }), [])
+  const undo = useCallback(() => dispatch({ type: 'UNDO' }), [])
+  const redo = useCallback(() => dispatch({ type: 'REDO' }), [])
 
   useEffect(() => {
     const handler = (e) => {

@@ -57,7 +57,7 @@ function RuleRow({ rule, onUpdate, onRemove, templates }) {
   }, [showTpl])
 
   return (
-    <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 group">
+    <tr className="border-b border-slate-100 dark:border-slate-700 last:border-0 hover:bg-slate-50/70 dark:hover:bg-slate-700/30 group">
       <td className="py-1.5 px-2">
         <div className="relative flex items-center">
           <input
@@ -69,21 +69,21 @@ function RuleRow({ rule, onUpdate, onRemove, templates }) {
           {templates && (
             <>
               <button ref={btnRef}
-                className="absolute right-1 text-slate-300 hover:text-slate-600"
+                className="absolute right-1 text-slate-300 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
                 onClick={() => setShowTpl(s => !s)}
                 title="Insert template"
               ><ChevronDown size={11}/></button>
               {showTpl && tplPos && createPortal(
                 <div
-                  className="fixed z-[90] bg-white border border-slate-200 rounded-lg shadow-lg py-1"
+                  className="fixed z-[90] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-xl py-1"
                   style={{ top: tplPos.top, left: tplPos.left, minWidth: 220, transform: 'translateX(-50%)' }}
                 >
                   {templates.map(t => (
                     <button key={t.value}
-                      className="w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-brand-50 hover:text-brand-700"
+                      className="w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-brand-50 dark:hover:bg-brand-900/20 hover:text-brand-700 dark:hover:text-brand-300"
                       onClick={() => { set('action', t.value); setShowTpl(false) }}>
-                      <span className="text-brand-600 font-semibold">{t.label}</span>
-                      <span className="text-slate-400 ml-2">{t.value}</span>
+                      <span className="text-brand-600 dark:text-brand-400 font-semibold">{t.label}</span>
+                      <span className="text-slate-400 dark:text-slate-500 ml-2">{t.value}</span>
                     </button>
                   ))}
                 </div>,
@@ -103,7 +103,7 @@ function RuleRow({ rule, onUpdate, onRemove, templates }) {
       </td>
       <td className="py-1.5 px-1">
         <button onClick={onRemove}
-          className="opacity-0 group-hover:opacity-100 btn-icon text-red-400 hover:text-red-600 hover:bg-red-50">
+          className="opacity-0 group-hover:opacity-100 btn-icon text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
           <Trash2 size={12}/>
         </button>
       </td>
@@ -133,7 +133,7 @@ function RuleTable({ label, rules, onChange, emptyLabel, templates, extraCol }) 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider font-mono">{label}</h4>
+        <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">{label}</h4>
         <div className="flex gap-2">
           {dirty && (
             <button onClick={save} className="btn-sm bg-brand-600 text-white hover:bg-brand-700">
@@ -147,19 +147,19 @@ function RuleTable({ label, rules, onChange, emptyLabel, templates, extraCol }) 
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-slate-400 text-xs font-mono italic py-2.5 text-center border border-dashed border-slate-200 rounded-lg bg-white/60">
+        <p className="text-slate-400 dark:text-slate-500 text-xs font-mono italic py-2.5 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg bg-white/60 dark:bg-slate-800/40">
           {emptyLabel || `No ${label} rules`}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
           <table className="w-full text-sm font-mono">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-slate-50 dark:bg-slate-700/60 border-b border-slate-200 dark:border-slate-600">
               <tr>
-                <th className="text-left py-2 px-3 text-slate-500 font-semibold text-[11px]">
-                  action {templates && <span className="text-slate-300 font-normal">(▾ templates)</span>}
+                <th className="text-left py-2 px-3 text-slate-500 dark:text-slate-400 font-semibold text-[11px]">
+                  action {templates && <span className="text-slate-300 dark:text-slate-500 font-normal">(▾ templates)</span>}
                 </th>
-                <th className="text-left py-2 px-3 text-slate-500 font-semibold text-[11px] w-48">
-                  condition <span className="text-slate-300 font-normal">(if/unless …)</span>
+                <th className="text-left py-2 px-3 text-slate-500 dark:text-slate-400 font-semibold text-[11px] w-48">
+                  condition <span className="text-slate-300 dark:text-slate-500 font-normal">(if/unless …)</span>
                 </th>
                 <th className="w-8"/>
               </tr>
@@ -215,23 +215,23 @@ function TcpRuleTable({ label, rules, onChange, types }) {
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-slate-400 text-xs font-mono italic py-2.5 text-center border border-dashed border-slate-200 rounded-lg bg-white/60">
+        <p className="text-slate-400 dark:text-slate-500 text-xs font-mono italic py-2.5 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg bg-white/60 dark:bg-slate-800/40">
           No {label} rules
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
           <table className="w-full text-sm font-mono">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-slate-50 dark:bg-slate-700/60 border-b border-slate-200 dark:border-slate-600">
               <tr>
-                <th className="text-left py-2 px-3 text-slate-500 font-semibold text-[11px] w-36">type</th>
-                <th className="text-left py-2 px-3 text-slate-500 font-semibold text-[11px]">action</th>
-                <th className="text-left py-2 px-3 text-slate-500 font-semibold text-[11px] w-48">condition</th>
+                <th className="text-left py-2 px-3 text-slate-500 dark:text-slate-400 font-semibold text-[11px] w-36">type</th>
+                <th className="text-left py-2 px-3 text-slate-500 dark:text-slate-400 font-semibold text-[11px]">action</th>
+                <th className="text-left py-2 px-3 text-slate-500 dark:text-slate-400 font-semibold text-[11px] w-48">condition</th>
                 <th className="w-8"/>
               </tr>
             </thead>
             <tbody>
               {rows.map(row => (
-                <tr key={row._id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 group">
+                <tr key={row._id} className="border-b border-slate-100 dark:border-slate-700 last:border-0 hover:bg-slate-50/70 dark:hover:bg-slate-700/30 group">
                   <td className="py-1.5 px-2">
                     <select className="input text-xs py-1 w-full"
                       value={row.type}
@@ -251,7 +251,7 @@ function TcpRuleTable({ label, rules, onChange, types }) {
                   </td>
                   <td className="py-1.5 px-1">
                     <button onClick={() => removeRow(row._id)}
-                      className="opacity-0 group-hover:opacity-100 btn-icon text-red-400 hover:text-red-600 hover:bg-red-50">
+                      className="opacity-0 group-hover:opacity-100 btn-icon text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
                       <Trash2 size={12}/>
                     </button>
                   </td>

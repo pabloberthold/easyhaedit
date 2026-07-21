@@ -66,7 +66,7 @@ function SectionGroup({ label, icon: Icon, color, count, onAdd, children }) {
 
 function EmptySection({ label }) {
   return (
-    <p className="text-slate-400 text-xs font-mono italic py-4 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+    <p className="text-slate-400 dark:text-slate-500 text-xs font-mono italic py-4 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/30">
       {label}
     </p>
   )

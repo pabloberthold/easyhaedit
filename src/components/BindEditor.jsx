@@ -37,43 +37,43 @@ function BindRow({ line, onChange, onRemove, feat }) {
   )
 
   return (
-    <div className="border border-slate-200 rounded-lg bg-white overflow-hidden">
+    <div className="border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2">
         <button onClick={() => setExpanded(e => !e)}
-          className="text-slate-400 hover:text-slate-600 shrink-0">
+          className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 shrink-0">
           {expanded ? <ChevronDown size={13}/> : <ChevronRight size={13}/>}
         </button>
         <input className="input-mono py-1 flex-1 font-mono text-xs" placeholder="*:443"
           value={address} onChange={e => setAddress(e.target.value)}/>
         <div className="flex gap-1 flex-wrap shrink-0 max-w-[200px] overflow-x-auto">
           {params.slice(0, 3).map(p => (
-            <span key={p} className="text-[10px] font-mono bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded whitespace-nowrap">
+            <span key={p} className="text-[10px] font-mono bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded whitespace-nowrap">
               {p}
             </span>
           ))}
           {params.length > 3 && (
-            <span className="text-[10px] text-slate-400">+{params.length - 3}</span>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500">+{params.length - 3}</span>
           )}
         </div>
         <button onClick={onRemove}
-          className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-colors shrink-0">
+          className="text-slate-300 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1 rounded transition-colors shrink-0">
           <Trash2 size={12}/>
         </button>
       </div>
       {expanded && (
-        <div className="px-4 pb-3 pt-1 border-t border-slate-100 bg-slate-50/50">
-          <div className="text-xs text-slate-400 mb-2">
-            Toggle params for <code className="font-mono text-slate-600 bg-white px-1 rounded">{address}</code>:
+        <div className="px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-700/20">
+          <div className="text-xs text-slate-400 dark:text-slate-500 mb-2">
+            Toggle params for <code className="font-mono text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 px-1 rounded">{address}</code>:
           </div>
-          <div className="flex flex-wrap gap-1 max-h-80 overflow-y-auto border border-slate-200 rounded p-1.5 bg-white">
+          <div className="flex flex-wrap gap-1 max-h-80 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded p-1.5 bg-white dark:bg-slate-700">
             {availableParams.map(p => {
               const active = params.includes(p)
               return (
                 <button key={p}
                   className={`text-[10px] font-mono px-2 py-0.5 rounded transition-colors ${
                     active
-                      ? 'bg-brand-100 text-brand-700'
-                      : 'bg-slate-50 text-slate-500 hover:bg-brand-50 hover:text-brand-600'
+                      ? 'bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300'
+                      : 'bg-slate-50 dark:bg-slate-600 text-slate-500 dark:text-slate-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 hover:text-brand-600 dark:hover:text-brand-300'
                   }`}
                   onClick={() => toggleParam(p)}>
                   {p}
@@ -116,8 +116,8 @@ export default function BindEditor({ bind = [], onChange, feat }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-          Bind <span className="text-slate-400 font-normal">params</span>
+        <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+          Bind <span className="text-slate-400 dark:text-slate-500 font-normal">params</span>
         </h4>
         <button onClick={add} className="btn-sm btn-secondary">
           <Plus size={11}/> Add bind
@@ -131,7 +131,7 @@ export default function BindEditor({ bind = [], onChange, feat }) {
         />
       ))}
       {rows.length === 0 && (
-        <p className="text-slate-400 text-xs font-mono italic py-2 text-center border border-dashed border-slate-200 rounded-lg bg-white/60">
+        <p className="text-slate-400 dark:text-slate-500 text-xs font-mono italic py-2 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg bg-white/60 dark:bg-slate-800/40">
           No bind directives
         </p>
       )}

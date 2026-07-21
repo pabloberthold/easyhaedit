@@ -54,23 +54,23 @@ export default function PersistenceEditor({ section, onUpdate }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2">
-        <Database size={13} className="text-slate-400 shrink-0"/>
-        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Persistence</h4>
+        <Database size={13} className="text-slate-400 dark:text-slate-500 shrink-0"/>
+        <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Persistence</h4>
       </div>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-mono text-slate-600 font-medium">Cookie</span>
+          <span className="text-xs font-mono text-slate-600 dark:text-slate-300 font-medium">Cookie</span>
           {cookie
             ? <button onClick={() => setCookie(null)}
-                className="text-[11px] text-red-400 hover:text-red-600">remove</button>
+                className="text-[11px] text-red-400 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300">remove</button>
             : <button onClick={() => setCookie({})}
                 className="btn-sm btn-secondary"><Plus size={11}/> Enable</button>
           }
         </div>
 
         {cookie && (
-          <div className="pl-3 border-l-2 border-purple-200 space-y-3">
+          <div className="pl-3 border-l-2 border-purple-200 dark:border-purple-700 space-y-3">
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="label">Cookie name</label>
@@ -101,8 +101,8 @@ export default function PersistenceEditor({ section, onUpdate }) {
                 <label key={field}
                   className={`flex items-center gap-1 text-[11px] font-mono cursor-pointer px-2 py-1 rounded border transition-colors
                     ${cookie[field]
-                      ? 'bg-purple-50 text-purple-700 border-purple-200'
-                      : 'bg-slate-50 text-slate-400 border-slate-200'}`}>
+                      ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700'
+                      : 'bg-slate-50 dark:bg-slate-700 text-slate-400 dark:text-slate-400 border-slate-200 dark:border-slate-600'}`}>
                   <input type="checkbox" className="sr-only"
                     checked={!!cookie[field]}
                     onChange={e => setCookie({ [field]: e.target.checked })}/>
@@ -136,17 +136,17 @@ export default function PersistenceEditor({ section, onUpdate }) {
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-mono text-slate-600 font-medium">Stick table</span>
+          <span className="text-xs font-mono text-slate-600 dark:text-slate-300 font-medium">Stick table</span>
           {stickTable
             ? <button onClick={() => setStickTable(null)}
-                className="text-[11px] text-red-400 hover:text-red-600">remove</button>
+                className="text-[11px] text-red-400 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300">remove</button>
             : <button onClick={() => setStickTable({})}
                 className="btn-sm btn-secondary"><Plus size={11}/> Enable</button>
           }
         </div>
 
         {stickTable && (
-          <div className="pl-3 border-l-2 border-amber-200 space-y-3">
+          <div className="pl-3 border-l-2 border-amber-200 dark:border-amber-700 space-y-3">
             <div className="grid grid-cols-4 gap-3">
               <div>
                 <label className="label">type</label>
@@ -184,8 +184,8 @@ export default function PersistenceEditor({ section, onUpdate }) {
                     <button key={s}
                       className={`text-[11px] font-mono px-2 py-0.5 rounded border transition-colors
                         ${active
-                          ? 'bg-amber-50 text-amber-700 border-amber-300'
-                          : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-slate-300'}`}
+                          ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700'
+                          : 'bg-slate-50 dark:bg-slate-700 text-slate-400 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'}`}
                       onClick={() => {
                         const cur = stickTable.store || []
                         const next = active ? cur.filter(x => !x.startsWith(s)) : [...cur, s]
@@ -204,7 +204,7 @@ export default function PersistenceEditor({ section, onUpdate }) {
                   setStickTable({ store: vals })
                 }}/>
             </div>
-            <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+            <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
               <input type="checkbox"
                 checked={!!stickTable.nopurge}
                 onChange={e => setStickTable({ nopurge: e.target.checked })}/>
@@ -216,30 +216,30 @@ export default function PersistenceEditor({ section, onUpdate }) {
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-mono text-slate-600 font-medium">Stick rules</span>
+          <span className="text-xs font-mono text-slate-600 dark:text-slate-300 font-medium">Stick rules</span>
           <button onClick={addStickRule} className="btn-sm btn-secondary">
             <Plus size={11}/> Add rule
           </button>
         </div>
         {stickRules.length === 0 ? (
-          <p className="text-slate-400 text-xs font-mono italic py-2.5 text-center border border-dashed border-slate-200 rounded-lg bg-white/60">
+          <p className="text-slate-400 dark:text-slate-500 text-xs font-mono italic py-2.5 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg bg-white/60 dark:bg-slate-800/40">
             No stick rules
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
             <table className="w-full text-sm font-mono">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="bg-slate-50 dark:bg-slate-700/60 border-b border-slate-200 dark:border-slate-600">
                 <tr>
-                  <th className="text-left py-2 px-3 text-slate-500 font-semibold text-[11px] w-36">action</th>
-                  <th className="text-left py-2 px-3 text-slate-500 font-semibold text-[11px]">expression</th>
-                  <th className="text-left py-2 px-3 text-slate-500 font-semibold text-[11px] w-32">table</th>
-                  <th className="text-left py-2 px-3 text-slate-500 font-semibold text-[11px] w-40">condition</th>
+                  <th className="text-left py-2 px-3 text-slate-500 dark:text-slate-400 font-semibold text-[11px] w-36">action</th>
+                  <th className="text-left py-2 px-3 text-slate-500 dark:text-slate-400 font-semibold text-[11px]">expression</th>
+                  <th className="text-left py-2 px-3 text-slate-500 dark:text-slate-400 font-semibold text-[11px] w-32">table</th>
+                  <th className="text-left py-2 px-3 text-slate-500 dark:text-slate-400 font-semibold text-[11px] w-40">condition</th>
                   <th className="w-8"/>
                 </tr>
               </thead>
               <tbody>
                 {stickRules.map((rule, i) => (
-                  <tr key={i} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 group">
+                  <tr key={i} className="border-b border-slate-100 dark:border-slate-700 last:border-0 hover:bg-slate-50/70 dark:hover:bg-slate-700/30 group">
                     <td className="py-1.5 px-2">
                       <select className="input text-xs py-1 w-full"
                         value={rule.action}
@@ -264,7 +264,7 @@ export default function PersistenceEditor({ section, onUpdate }) {
                     </td>
                     <td className="py-1.5 px-1">
                       <button onClick={() => removeStickRule(i)}
-                        className="opacity-0 group-hover:opacity-100 btn-icon text-red-400 hover:text-red-600 hover:bg-red-50">
+                        className="opacity-0 group-hover:opacity-100 btn-icon text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
                         <Trash2 size={12}/>
                       </button>
                     </td>

@@ -473,11 +473,11 @@ export default function FlowDiagram({ config }) {
   if (!frontends.length) {
     return (
       <div className="card p-14 text-center flex flex-col items-center">
-        <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-          <Workflow size={26} className="text-slate-400"/>
+        <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center mb-4">
+          <Workflow size={26} className="text-slate-400 dark:text-slate-500"/>
         </div>
-        <h3 className="text-sm font-semibold text-slate-600 mb-1">No frontends to visualize</h3>
-        <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
+        <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1">No frontends to visualize</h3>
+        <p className="text-xs text-slate-400 dark:text-slate-500 max-w-xs leading-relaxed">
           Parse a HAProxy configuration first. The flow diagram renders the full routing path — frontend → ACL rules → backends → servers.
         </p>
       </div>
@@ -487,9 +487,9 @@ export default function FlowDiagram({ config }) {
   return (
     <div className="card overflow-hidden">
 
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 flex-wrap">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex-wrap">
 
-        <span className="text-xs font-mono text-slate-400 uppercase tracking-widest shrink-0">Frontend</span>
+        <span className="text-xs font-mono text-slate-400 dark:text-slate-500 uppercase tracking-widest shrink-0">Frontend</span>
         <select
           className="input text-xs font-mono py-1 px-2"
           style={{ width: 'auto', minWidth: 140 }}
@@ -501,10 +501,10 @@ export default function FlowDiagram({ config }) {
           ))}
         </select>
 
-        <div className="w-px h-5 bg-slate-200 mx-1 shrink-0"/>
+        <div className="w-px h-5 bg-slate-200 dark:bg-slate-600 mx-1 shrink-0"/>
 
         <div className="relative flex items-center shrink-0" title="Filter by backend name">
-          <Search size={12} className="absolute left-2.5 text-slate-400 pointer-events-none"/>
+          <Search size={12} className="absolute left-2.5 text-slate-400 dark:text-slate-500 pointer-events-none"/>
           <input
             className="input text-xs py-1 pl-7 pr-6"
             style={{ width: 148 }}
@@ -513,14 +513,14 @@ export default function FlowDiagram({ config }) {
             onChange={e => setBeFilter(e.target.value)}
           />
           {beFilter && (
-            <button className="absolute right-1.5 text-slate-400 hover:text-slate-600" onClick={() => setBeFilter('')}>
+            <button className="absolute right-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300" onClick={() => setBeFilter('')}>
               <X size={11}/>
             </button>
           )}
         </div>
 
         <div className="relative flex items-center shrink-0" title="Filter by server name or address">
-          <Search size={12} className="absolute left-2.5 text-slate-400 pointer-events-none"/>
+          <Search size={12} className="absolute left-2.5 text-slate-400 dark:text-slate-500 pointer-events-none"/>
           <input
             className="input text-xs py-1 pl-7 pr-6"
             style={{ width: 148 }}
@@ -529,30 +529,30 @@ export default function FlowDiagram({ config }) {
             onChange={e => setSrvFilter(e.target.value)}
           />
           {srvFilter && (
-            <button className="absolute right-1.5 text-slate-400 hover:text-slate-600" onClick={() => setSrvFilter('')}>
+            <button className="absolute right-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300" onClick={() => setSrvFilter('')}>
               <X size={11}/>
             </button>
           )}
         </div>
 
-        <div className="w-px h-5 bg-slate-200 mx-1 shrink-0"/>
+        <div className="w-px h-5 bg-slate-200 dark:bg-slate-600 mx-1 shrink-0"/>
 
         <div className="flex items-center gap-1 shrink-0">
           <button onClick={zoomOut} disabled={zoomIdx === 0}
-            className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             title="Zoom out"><ZoomOut size={15}/></button>
           <button onClick={zoomReset}
-            className="px-2 py-0.5 rounded text-xs font-mono text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors min-w-[42px] text-center"
+            className="px-2 py-0.5 rounded text-xs font-mono text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors min-w-[42px] text-center"
             title="Reset zoom">{zoomPct}%</button>
           <button onClick={zoomIn} disabled={zoomIdx === ZOOM_STEPS.length - 1}
-            className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             title="Zoom in"><ZoomIn size={15}/></button>
           <button onClick={zoomReset}
-            className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
             title="Reset zoom"><RotateCcw size={13}/></button>
         </div>
 
-        <div className="ml-auto flex items-center gap-3 text-xs text-slate-400 font-mono shrink-0">
+        <div className="ml-auto flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500 font-mono shrink-0">
           {[['#059669','frontend'],['#2563eb','acl/route'],['#7c3aed','backend'],['#ea580c','server']].map(([color, label]) => (
             <span key={label} className="flex items-center gap-1">
               <span className="inline-block w-2 h-2 rounded-full" style={{ background: color }}/>
@@ -563,7 +563,7 @@ export default function FlowDiagram({ config }) {
       </div>
 
       {(showBeFilterWarning || showBeFilterResult || showSrvFilterResult) && (
-        <div className="px-4 py-1.5 bg-amber-50 border-b border-amber-200 text-xs text-amber-700 flex items-center gap-3 flex-wrap">
+        <div className="px-4 py-1.5 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-3 flex-wrap">
           <Search size={11} className="shrink-0"/>
           {showBeFilterWarning && (
             <span><strong>{allReferencedBEs.length}</strong> backends — filter for focus</span>
@@ -581,7 +581,7 @@ export default function FlowDiagram({ config }) {
             </span>
           )}
           {(beFilter || srvFilter) && (
-            <button className="ml-auto text-amber-600 hover:text-amber-800 font-medium flex items-center gap-1"
+            <button className="ml-auto text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 font-medium flex items-center gap-1"
               onClick={() => { setBeFilter(''); setSrvFilter('') }}>
               <X size={10}/> Clear filters
             </button>
@@ -591,7 +591,7 @@ export default function FlowDiagram({ config }) {
 
       <div
         ref={wrapRef}
-        className="overflow-auto bg-slate-50 relative"
+        className="overflow-auto bg-slate-50 dark:bg-slate-900 relative"
         style={{ maxHeight: 'calc(100vh - 220px)' }}
       >
         <svg

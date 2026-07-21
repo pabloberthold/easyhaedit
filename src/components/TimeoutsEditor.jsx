@@ -24,7 +24,7 @@ export default function TimeoutsEditor({ timeouts = {}, onChange, mode = 'http',
 
   return (
     <div className="space-y-2">
-      <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Timeouts</h4>
+      <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Timeouts</h4>
       <div className="grid grid-cols-3 gap-3">
         {relevantTimeouts.map(({ field, label, hint }) => (
           <div key={field}>
@@ -36,7 +36,7 @@ export default function TimeoutsEditor({ timeouts = {}, onChange, mode = 'http',
                 value={timeouts[field] || ''}
                 onChange={e => set(field, e.target.value)}
               />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-300 pointer-events-none">
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-300 dark:text-slate-500 pointer-events-none">
                 e.g. {hint}
               </span>
             </div>

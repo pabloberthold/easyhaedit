@@ -70,8 +70,8 @@ export default function HealthCheckEditor({ healthCheck, onChange }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <Activity size={13} className="text-slate-400 shrink-0"/>
-        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Health Check</h4>
+        <Activity size={13} className="text-slate-400 dark:text-slate-500 shrink-0"/>
+        <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Health Check</h4>
       </div>
 
       <div>
@@ -124,18 +124,18 @@ export default function HealthCheckEditor({ healthCheck, onChange }) {
         <div className="space-y-2 pl-3 border-l-2 border-blue-200">
           <label className="label">tcp-check rules</label>
           {(hc.tcp_check_rules || []).length === 0 ? (
-            <p className="text-slate-400 text-xs font-mono italic py-2 text-center border border-dashed border-slate-200 rounded-lg">
+            <p className="text-slate-400 dark:text-slate-500 text-xs font-mono italic py-2 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800/40">
               No tcp-check rules
             </p>
           ) : (
             <div className="space-y-1">
               {(hc.tcp_check_rules || []).map((rule, i) => (
                 <div key={i} className="flex items-center gap-2 group">
-                  <code className="flex-1 text-xs font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-700">
+                  <code className="flex-1 text-xs font-mono bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-2 py-1 text-slate-700 dark:text-slate-300">
                     tcp-check {rule}
                   </code>
                   <button onClick={() => removeTcpRule(i)}
-                    className="opacity-0 group-hover:opacity-100 btn-icon text-red-400 hover:text-red-600 hover:bg-red-50">
+                    className="opacity-0 group-hover:opacity-100 btn-icon text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
                     <Trash2 size={12}/>
                   </button>
                 </div>
@@ -175,7 +175,7 @@ export default function HealthCheckEditor({ healthCheck, onChange }) {
       )}
 
       {['ssl', 'redis', 'pgsql'].includes(type) && (
-        <p className="text-[11px] text-slate-400 pl-3 border-l-2 border-blue-200 py-1 font-mono">
+        <p className="text-[11px] text-slate-400 dark:text-slate-500 pl-3 border-l-2 border-blue-200 dark:border-blue-700 py-1 font-mono">
           option {type === 'ssl' ? 'ssl-hello-chk' : type + '-check'} — no additional params
         </p>
       )}

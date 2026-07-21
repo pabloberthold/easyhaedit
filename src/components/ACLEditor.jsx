@@ -238,7 +238,7 @@ function ACLEditor({ acls = [], onChange, sectionLabel = '' }) {
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-slate-400 text-xs font-mono italic py-3 text-center border border-dashed border-slate-200 rounded-lg bg-white/60">
+        <p className="text-slate-400 dark:text-slate-500 text-xs font-mono italic py-3 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg bg-white/60 dark:bg-slate-800/40">
           No ACL rules
         </p>
       ) : (

@@ -2,7 +2,7 @@ import { CheckCircle2, XCircle, Terminal, AlertTriangle } from 'lucide-react'
 
 export default function ValidationPanel({ result, loading }) {
   if (loading) return (
-    <div className="card p-4 flex items-center gap-3 text-slate-400">
+    <div className="card p-4 flex items-center gap-3 text-slate-400 dark:text-slate-500">
       <Terminal size={16} className="text-brand-500 animate-pulse"/>
       <span className="text-sm font-mono">Validating configuration…</span>
     </div>
@@ -23,7 +23,7 @@ export default function ValidationPanel({ result, loading }) {
       {result.errors?.length > 0 && (
         <div className="space-y-1 mb-3">
           {result.errors.map((err, i) => (
-            <div key={i} className="flex items-start gap-2 text-xs font-mono text-red-600 bg-red-50 px-2 py-1 rounded">
+            <div key={i} className="flex items-start gap-2 text-xs font-mono text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
               <AlertTriangle size={11} className="shrink-0 mt-0.5"/>
               <span>{err}</span>
             </div>
@@ -35,7 +35,7 @@ export default function ValidationPanel({ result, loading }) {
         <div className="space-y-1">
           {result.issues.map((iss, i) => (
             <div key={i} className={`flex items-start gap-2 text-xs font-mono px-2 py-1 rounded ${
-              iss.severity === 'error' ? 'text-red-600 bg-red-50' : 'text-amber-700 bg-amber-50'
+              iss.severity === 'error' ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20' : 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20'
             }`}>
               <AlertTriangle size={11} className="shrink-0 mt-0.5"/>
               <span>Line {iss.line}: {iss.message}</span>
@@ -46,10 +46,10 @@ export default function ValidationPanel({ result, loading }) {
 
       {result.raw_output && (
         <details className="mt-2">
-          <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-600 select-none font-mono">
+          <summary className="text-xs text-slate-400 dark:text-slate-500 cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 select-none font-mono">
             Raw output
           </summary>
-          <pre className="mt-2 text-xs font-mono bg-slate-100 border border-slate-200 p-3 rounded-lg overflow-x-auto text-slate-600 whitespace-pre-wrap">
+          <pre className="mt-2 text-xs font-mono bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-lg overflow-x-auto text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
             {result.raw_output}
           </pre>
         </details>

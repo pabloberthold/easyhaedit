@@ -1,5 +1,7 @@
 import { useState, useEffect, memo, useMemo } from 'react'
 import { Plus, Trash2, Save, ChevronDown, ChevronRight, Shield, Activity } from 'lucide-react'
+import { getServerParamExplanation } from '../lib/haproxy-explanations.js'
+import InfoButton from './InfoButton'
 
 const EMPTY = {
   name: '', address: '', port: 80,
@@ -66,6 +68,7 @@ function ServerRow({ row, onUpdate, onRemove, feat }) {
             checked={!!row.check} onChange={e => set('check', e.target.checked)}/>
           <Activity size={10}/> chk
         </label>
+        <InfoButton explanation={getServerParamExplanation('check')}/>
         <label className={`flex items-center gap-1 text-[11px] font-mono cursor-pointer px-2 py-1 rounded transition-colors shrink-0
           ${row.ssl ? 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700' : 'bg-slate-50 dark:bg-slate-700 text-slate-400 dark:text-slate-400 border border-slate-200 dark:border-slate-600'}`}
           title="SSL">
@@ -73,18 +76,21 @@ function ServerRow({ row, onUpdate, onRemove, feat }) {
             checked={!!row.ssl} onChange={e => set('ssl', e.target.checked)}/>
           <Shield size={10}/> ssl
         </label>
+        <InfoButton explanation={getServerParamExplanation('ssl')}/>
         <label className={`text-[11px] font-mono cursor-pointer px-2 py-1 rounded transition-colors shrink-0
           ${row.backup ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700' : 'bg-slate-50 dark:bg-slate-700 text-slate-400 dark:text-slate-400 border border-slate-200 dark:border-slate-600'}`}>
           <input type="checkbox" className="sr-only"
             checked={!!row.backup} onChange={e => set('backup', e.target.checked)}/>
           bkp
         </label>
+        <InfoButton explanation={getServerParamExplanation('backup')}/>
         <label className={`text-[11px] font-mono cursor-pointer px-2 py-1 rounded transition-colors shrink-0
           ${row.disabled ? 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700' : 'bg-slate-50 dark:bg-slate-700 text-slate-400 dark:text-slate-400 border border-slate-200 dark:border-slate-600'}`}>
           <input type="checkbox" className="sr-only"
             checked={!!row.disabled} onChange={e => set('disabled', e.target.checked)}/>
           dis
         </label>
+        <InfoButton explanation={getServerParamExplanation('disabled')}/>
 
         <button onClick={onRemove}
           className="ml-auto text-slate-300 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1 rounded transition-colors shrink-0">
@@ -194,15 +200,18 @@ function ServerRow({ row, onUpdate, onRemove, feat }) {
                 {availableParams.map(p => {
                   const active = (row.extra_params || []).includes(p)
                   return (
-                    <button key={p}
-                      className={`text-[10px] font-mono px-2 py-0.5 rounded transition-colors ${
-                        active
-                          ? 'bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300'
-                          : 'bg-slate-50 dark:bg-slate-600 text-slate-500 dark:text-slate-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 hover:text-brand-600 dark:hover:text-brand-300'
-                      }`}
-                      onClick={() => active ? removeParam(p) : addParam(p)}>
-                      {p}
-                    </button>
+                    <div key={p} className="flex items-center gap-0.5">
+                      <button
+                        className={`text-[10px] font-mono px-2 py-0.5 rounded transition-colors ${
+                          active
+                            ? 'bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300'
+                            : 'bg-slate-50 dark:bg-slate-600 text-slate-500 dark:text-slate-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 hover:text-brand-600 dark:hover:text-brand-300'
+                        }`}
+                        onClick={() => active ? removeParam(p) : addParam(p)}>
+                        {p}
+                      </button>
+                      <InfoButton explanation={getServerParamExplanation(p)}/>
+                    </div>
                   )
                 })}
               </div>

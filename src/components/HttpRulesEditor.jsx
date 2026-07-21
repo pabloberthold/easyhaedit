@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useMemo, memo } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, Trash2, Save, ChevronDown } from 'lucide-react'
 import { getVersionData } from '../lib/haproxy-versions.js'
+import { getActionExplanation } from '../lib/haproxy-explanations.js'
+import InfoButton from './InfoButton'
 
 const HTTP_REQ_TEMPLATES_BASE = [
   { label: 'set-header',     value: 'set-header X-Header value' },
@@ -59,17 +61,18 @@ function RuleRow({ rule, onUpdate, onRemove, templates }) {
   return (
     <tr className="border-b border-slate-100 dark:border-slate-700 last:border-0 hover:bg-slate-50/70 dark:hover:bg-slate-700/30 group">
       <td className="py-1.5 px-2">
-        <div className="relative flex items-center">
+        <div className="flex items-center gap-0.5">
           <input
-            className="input-mono py-1 w-full pr-6"
+            className="input-mono py-1 flex-1 min-w-0"
             value={rule.action}
             onChange={e => set('action', e.target.value)}
             placeholder="set-header X-Real-IP %[src]"
           />
+          <InfoButton explanation={getActionExplanation(rule.action)}/>
           {templates && (
             <>
               <button ref={btnRef}
-                className="absolute right-1 text-slate-300 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+                className="text-slate-300 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 shrink-0"
                 onClick={() => setShowTpl(s => !s)}
                 title="Insert template"
               ><ChevronDown size={11}/></button>
@@ -240,9 +243,12 @@ function TcpRuleTable({ label, rules, onChange, types }) {
                     </select>
                   </td>
                   <td className="py-1.5 px-2">
-                    <input className="input-mono py-1 w-full" value={row.action}
-                      onChange={e => updateRow(row._id, { ...row, action: e.target.value })}
-                      placeholder="accept / reject / track-sc0 src"/>
+                    <div className="flex items-center gap-0.5">
+                      <input className="input-mono py-1 flex-1 min-w-0" value={row.action}
+                        onChange={e => updateRow(row._id, { ...row, action: e.target.value })}
+                        placeholder="accept / reject / track-sc0 src"/>
+                      <InfoButton explanation={getActionExplanation(row.action)}/>
+                    </div>
                   </td>
                   <td className="py-1.5 px-2">
                     <input className="input-mono py-1 w-full" value={row.condition || ''}

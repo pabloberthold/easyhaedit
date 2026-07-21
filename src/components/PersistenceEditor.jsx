@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Plus, Trash2, Database } from 'lucide-react'
+import { STICK_ACTION_EXPLANATIONS } from '../lib/haproxy-explanations.js'
+import InfoButton from './InfoButton'
 
 const STICK_ACTIONS = ['store-request', 'match', 'on', 'store-response']
 const COOKIE_METHODS = ['insert', 'rewrite', 'prefix']
@@ -241,11 +243,14 @@ export default function PersistenceEditor({ section, onUpdate }) {
                 {stickRules.map((rule, i) => (
                   <tr key={i} className="border-b border-slate-100 dark:border-slate-700 last:border-0 hover:bg-slate-50/70 dark:hover:bg-slate-700/30 group">
                     <td className="py-1.5 px-2">
-                      <select className="input text-xs py-1 w-full"
-                        value={rule.action}
-                        onChange={e => updateStickRule(i, { action: e.target.value })}>
-                        {STICK_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
-                      </select>
+                      <div className="flex items-center gap-1">
+                        <select className="input text-xs py-1 flex-1"
+                          value={rule.action}
+                          onChange={e => updateStickRule(i, { action: e.target.value })}>
+                          {STICK_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                        <InfoButton explanation={STICK_ACTION_EXPLANATIONS[rule.action]}/>
+                      </div>
                     </td>
                     <td className="py-1.5 px-2">
                       <input className="input-mono py-1 w-full" placeholder="src"

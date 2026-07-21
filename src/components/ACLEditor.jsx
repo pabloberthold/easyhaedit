@@ -1,6 +1,8 @@
 import { useState, memo, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, Trash2, Save, ChevronDown } from 'lucide-react'
+import { getAclExplanation } from '../lib/haproxy-explanations.js'
+import InfoButton from './InfoButton'
 
 const ACL_OPTIONS = [
   { group: 'URL / Path',      label: 'path_beg — comienza con',           value: 'path_beg' },
@@ -273,29 +275,32 @@ function ACLEditor({ acls = [], onChange, sectionLabel = '' }) {
                     />
                   </td>
                   <td className="py-1.5 px-2">
-                    {row.option === '__custom__' ? (
-                      <input
-                        className="input-mono py-1"
-                        value={row.value}
-                        onChange={e => update(row._id, 'value', e.target.value)}
-                        placeholder="path_beg /api /health"
-                      />
-                    ) : (
-                      <input
-                        className="input-mono py-1"
-                        value={row.value}
-                        onChange={e => update(row._id, 'value', e.target.value)}
-                        placeholder={
-                          row.option === 'src' ? '10.0.0.0/8' :
-                          row.option === 'method' ? 'GET POST' :
-                          row.option === 'hdr(host)' ? 'api.ejemplo.com' :
-                          row.option.startsWith('path') ? '/api /health' :
-                          row.option === 'always_true' || row.option === 'always_false' ? '(sin valor)' :
-                          'valor…'
-                        }
-                        disabled={row.option === 'always_true' || row.option === 'always_false'}
-                      />
-                    )}
+                    <div className="flex items-center gap-1">
+                      {row.option === '__custom__' ? (
+                        <input
+                          className="input-mono py-1 flex-1"
+                          value={row.value}
+                          onChange={e => update(row._id, 'value', e.target.value)}
+                          placeholder="path_beg /api /health"
+                        />
+                      ) : (
+                        <input
+                          className="input-mono py-1 flex-1"
+                          value={row.value}
+                          onChange={e => update(row._id, 'value', e.target.value)}
+                          placeholder={
+                            row.option === 'src' ? '10.0.0.0/8' :
+                            row.option === 'method' ? 'GET POST' :
+                            row.option === 'hdr(host)' ? 'api.ejemplo.com' :
+                            row.option.startsWith('path') ? '/api /health' :
+                            row.option === 'always_true' || row.option === 'always_false' ? '(sin valor)' :
+                            'valor…'
+                          }
+                          disabled={row.option === 'always_true' || row.option === 'always_false'}
+                        />
+                      )}
+                      <InfoButton explanation={getAclExplanation(row.option)}/>
+                    </div>
                   </td>
                   <td className="py-1.5 px-1">
                     <button

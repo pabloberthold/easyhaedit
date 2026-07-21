@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
+import { getBindParamExplanation } from '../lib/haproxy-explanations.js'
+import InfoButton from './InfoButton'
 
 const KNOWN_BIND_PARAMS = [
   'ssl', 'alpn', 'backlog', 'ca-file', 'ca-verify-file', 'ciphers', 'ciphersuites',
@@ -69,15 +71,18 @@ function BindRow({ line, onChange, onRemove, feat }) {
             {availableParams.map(p => {
               const active = params.includes(p)
               return (
-                <button key={p}
-                  className={`text-[10px] font-mono px-2 py-0.5 rounded transition-colors ${
-                    active
-                      ? 'bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300'
-                      : 'bg-slate-50 dark:bg-slate-600 text-slate-500 dark:text-slate-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 hover:text-brand-600 dark:hover:text-brand-300'
-                  }`}
-                  onClick={() => toggleParam(p)}>
-                  {p}
-                </button>
+                <div key={p} className="flex items-center gap-0.5">
+                  <button
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded transition-colors ${
+                      active
+                        ? 'bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300'
+                        : 'bg-slate-50 dark:bg-slate-600 text-slate-500 dark:text-slate-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 hover:text-brand-600 dark:hover:text-brand-300'
+                    }`}
+                    onClick={() => toggleParam(p)}>
+                    {p}
+                  </button>
+                  <InfoButton explanation={getBindParamExplanation(p)}/>
+                </div>
               )
             })}
           </div>

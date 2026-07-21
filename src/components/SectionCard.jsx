@@ -8,6 +8,8 @@ import {
 import { getVersionData } from '../lib/haproxy-versions.js'
 import { serializeFrontendSection, serializeBackendSection, serializeListenSection } from '../lib/haproxy-serializer.js'
 import { validateConfigText } from '../lib/haproxy-validator.js'
+import { getOptionExplanation } from '../lib/haproxy-explanations.js'
+import InfoButton from './InfoButton'
 import ACLEditor        from './ACLEditor'
 import ServerEditor     from './ServerEditor'
 import HttpRulesEditor  from './HttpRulesEditor'
@@ -59,10 +61,11 @@ function OptionsList({ options = [], onChange, feat }) {
       <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Options</h4>
       <div className="space-y-1">
         {options.map((opt, i) => (
-          <div key={i} className="flex items-center gap-2 group">
+          <div key={i} className="flex items-center gap-1.5 group">
             <code className="flex-1 text-xs font-mono bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-2 py-1 text-slate-700 dark:text-slate-300">
               option {opt}
             </code>
+            <InfoButton explanation={getOptionExplanation(opt)}/>
             <button onClick={() => remove(i)}
               className="opacity-0 group-hover:opacity-100 btn-icon text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
               <Trash2 size={12}/>

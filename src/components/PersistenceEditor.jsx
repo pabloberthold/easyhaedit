@@ -224,11 +224,11 @@ export default function PersistenceEditor({ section, onUpdate }) {
           </button>
         </div>
         {stickRules.length === 0 ? (
-          <p className="text-slate-400 dark:text-slate-500 text-xs font-mono italic py-2.5 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg bg-white/60 dark:bg-slate-800/40">
+          <p className="text-slate-400 dark:text-slate-500 text-xs font-mono italic py-2.5 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg bg-surface/60 dark:bg-slate-800/40">
             No stick rules
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-surface dark:bg-slate-800">
             <table className="w-full text-sm font-mono">
               <thead className="bg-slate-50 dark:bg-slate-700/60 border-b border-slate-200 dark:border-slate-600">
                 <tr>

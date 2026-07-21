@@ -10,7 +10,7 @@
   html { font-size: 15px; }
 
   body {
-    background: #f1f5f9;
+    background: #f0ebe3;
     color: #1e293b;
     font-family: 'Plus Jakarta Sans', sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -32,11 +32,11 @@
 @layer components {
 
   .app-shell {
-    @apply flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-900;
+    @apply flex h-screen overflow-hidden bg-page dark:bg-slate-900;
   }
 
   .card {
-    @apply bg-white rounded-xl border border-slate-200 shadow-card
+    @apply bg-surface rounded-xl border border-slate-200 shadow-card
            dark:bg-slate-800 dark:border-slate-700;
   }
   .card-header {
@@ -53,7 +53,7 @@
 
   .btn-primary { @apply btn-md bg-brand-600 text-white hover:bg-brand-700 shadow-sm; }
   .btn-secondary {
-    @apply btn-md bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 shadow-card
+    @apply btn-md bg-surface text-slate-700 border border-slate-200 hover:bg-slate-50 shadow-card
            dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-600;
   }
   .btn-ghost {
@@ -69,7 +69,7 @@
   }
 
   .input {
-    @apply w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800
+    @apply w-full bg-surface border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800
            focus:outline-none focus:ring-2 focus:ring-brand-400/40 focus:border-brand-400
            placeholder:text-slate-400 transition-all
            dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100
@@ -91,7 +91,7 @@
            dark:text-slate-400 dark:hover:text-slate-200;
   }
   .tab-item.active {
-    @apply bg-white text-slate-800 shadow-card
+    @apply bg-surface text-slate-800 shadow-card
            dark:bg-slate-700 dark:text-slate-100;
   }
 
@@ -119,11 +119,11 @@
     @apply fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4;
   }
   .modal-box {
-    @apply bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-modal
+    @apply bg-surface rounded-2xl shadow-xl w-full max-w-md p-6 animate-modal
            dark:bg-slate-800 dark:border dark:border-slate-700;
   }
   .modal-box-lg {
-    @apply bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 animate-modal
+    @apply bg-surface rounded-2xl shadow-xl w-full max-w-lg p-6 animate-modal
            dark:bg-slate-800 dark:border dark:border-slate-700;
   }
 
@@ -131,9 +131,9 @@
     @apply fixed top-4 right-4 z-[60] flex items-center gap-3 px-4 py-3 rounded-xl
            shadow-lifted text-sm font-medium animate-slideIn;
   }
-  .notif-ok   { @apply notif bg-white border border-emerald-200 text-emerald-700 dark:bg-slate-800 dark:border-emerald-700 dark:text-emerald-300; }
-  .notif-err  { @apply notif bg-white border border-red-200 text-red-700 dark:bg-slate-800 dark:border-red-700 dark:text-red-300; }
-  .notif-info { @apply notif bg-white border border-blue-200 text-blue-700 dark:bg-slate-800 dark:border-blue-700 dark:text-blue-300; }
+  .notif-ok   { @apply notif bg-surface border border-emerald-200 text-emerald-700 dark:bg-slate-800 dark:border-emerald-700 dark:text-emerald-300; }
+  .notif-err  { @apply notif bg-surface border border-red-200 text-red-700 dark:bg-slate-800 dark:border-red-700 dark:text-red-300; }
+  .notif-info { @apply notif bg-surface border border-blue-200 text-blue-700 dark:bg-slate-800 dark:border-blue-700 dark:text-blue-300; }
 }
 
 @layer utilities {

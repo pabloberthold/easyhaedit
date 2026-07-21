@@ -81,7 +81,7 @@ function OptionsList({ options = [], onChange, feat }) {
       </div>
       <details className="text-xs text-slate-400 dark:text-slate-500">
         <summary className="cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 font-medium">Available options for HAProxy {feat._version}</summary>
-        <div className="mt-1 flex flex-wrap gap-1 max-h-80 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded p-1.5 bg-white dark:bg-slate-700">
+        <div className="mt-1 flex flex-wrap gap-1 max-h-80 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded p-1.5 bg-surface dark:bg-slate-700">
           {availableOptions.map(opt => (
             <div key={opt} className="flex items-center gap-0.5">
               <button
@@ -446,7 +446,7 @@ function SectionCard({ type, section, onUpdate, onRemove, onDuplicate, haVersion
           className="fixed inset-0 z-[80] flex items-stretch justify-center bg-slate-900/60 backdrop-blur-sm p-4"
           onClick={e => { if (e.target === e.currentTarget) setExpanded(false) }}
         >
-          <div className="flex flex-col w-full max-w-6xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+          <div className="flex flex-col w-full max-w-6xl bg-surface dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden">
 
             <div className="flex items-center gap-3 px-5 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 shrink-0">
               <span className={TYPE_BADGE[type] || 'badge-gl'}>{type}</span>

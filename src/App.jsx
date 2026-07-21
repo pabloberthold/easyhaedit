@@ -215,7 +215,7 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
     <div className="flex flex-col h-full min-h-0">
 
       {/* Toolbar */}
-      <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-3 flex items-center gap-2 flex-wrap shrink-0">
+      <div className="bg-surface dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-3 flex items-center gap-2 flex-wrap shrink-0">
         <label className="btn-sm btn-secondary cursor-pointer">
           <Upload size={13}/> Upload .cfg
           <input type="file" accept=".cfg,.conf,.txt" className="hidden" onChange={handleFileUpload}/>
@@ -270,7 +270,7 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
 
       {/* Stats */}
       {stats && (
-        <div className="bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 px-6 py-2 flex items-center gap-6 shrink-0">
+        <div className="bg-surface dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 px-6 py-2 flex items-center gap-6 shrink-0">
           {[
             { label: 'Frontends', val: stats.frontends, color: 'text-blue-500' },
             { label: 'Backends',  val: stats.backends,  color: 'text-emerald-500' },
@@ -287,7 +287,7 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
       )}
 
       {/* Tabs */}
-      <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 pt-3 shrink-0">
+      <div className="bg-surface dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 pt-3 shrink-0">
         <div className="tab-bar inline-flex">
           {TABS.map(t => (
             <button key={t.id} className={`tab-item ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
@@ -321,7 +321,7 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
                 <pre className="text-xs font-mono text-red-600 dark:text-red-400 whitespace-pre-wrap">{parseError}</pre>
               </div>
             )}
-            <div className="border-t border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center gap-2 bg-white dark:bg-slate-800 rounded-b-xl">
+            <div className="border-t border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center gap-2 bg-surface dark:bg-slate-800 rounded-b-xl">
               <button className="btn-primary text-xs" onClick={handleParse} disabled={loading}>
                 {loading ? <RefreshCw size={13} className="animate-spin"/> : <Eye size={13}/>}
                 Load into Visual Editor
@@ -529,7 +529,7 @@ export default function App() {
       {/* Main area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-3 flex items-center gap-3 shrink-0">
+        <header className="bg-surface dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-3 flex items-center gap-3 shrink-0">
           <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center shrink-0">
             <Layers size={16} className="text-white"/>
           </div>
@@ -565,7 +565,7 @@ export default function App() {
         />
 
         {/* Footer */}
-        <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-6 py-2 shrink-0 flex items-center justify-between">
+        <footer className="bg-surface dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-6 py-2 shrink-0 flex items-center justify-between">
           <span className="text-[11px] text-slate-400">v{APP_VERSION} · HAProxy {haVersion}</span>
           <span className="text-[11px] text-slate-400">Coding by <a href="https://github.com/pabloberthold" target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:text-brand-700 transition-colors">pabloberthold</a></span>
         </footer>

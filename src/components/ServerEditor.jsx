@@ -47,7 +47,7 @@ function ServerRow({ row, onUpdate, onRemove, feat }) {
   }
 
   return (
-    <div className="border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 overflow-hidden group">
+    <div className="border border-slate-200 dark:border-slate-700 rounded-lg bg-surface dark:bg-slate-800 overflow-hidden group">
       <div className="flex items-center gap-2 px-3 py-2">
         <button onClick={() => setExpanded(e => !e)}
           className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 shrink-0">
@@ -196,7 +196,7 @@ function ServerRow({ row, onUpdate, onRemove, feat }) {
               <summary className="cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 font-medium">
                 Available params for HAProxy {feat?._version}
               </summary>
-              <div className="mt-1 flex flex-wrap gap-1 max-h-80 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded p-1.5 bg-white dark:bg-slate-700">
+              <div className="mt-1 flex flex-wrap gap-1 max-h-80 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded p-1.5 bg-surface dark:bg-slate-700">
                 {availableParams.map(p => {
                   const active = (row.extra_params || []).includes(p)
                   return (
@@ -266,7 +266,7 @@ function ServerEditor({ servers = [], onChange, feat }) {
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-slate-400 dark:text-slate-500 text-xs font-mono italic py-3 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg bg-white/60 dark:bg-slate-800/40">
+        <p className="text-slate-400 dark:text-slate-500 text-xs font-mono italic py-3 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg bg-surface/60 dark:bg-slate-800/40">
           No servers defined
         </p>
       ) : (

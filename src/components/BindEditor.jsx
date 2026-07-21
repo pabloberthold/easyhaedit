@@ -39,7 +39,7 @@ function BindRow({ line, onChange, onRemove, feat }) {
   )
 
   return (
-    <div className="border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 overflow-hidden group">
+    <div className="border border-slate-200 dark:border-slate-700 rounded-lg bg-surface dark:bg-slate-800 overflow-hidden group">
       <div className="flex items-center gap-2 px-3 py-2">
         <button onClick={() => setExpanded(e => !e)}
           className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 shrink-0">
@@ -65,9 +65,9 @@ function BindRow({ line, onChange, onRemove, feat }) {
       {expanded && (
         <div className="px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-700/20">
           <div className="text-xs text-slate-400 dark:text-slate-500 mb-2">
-            Toggle params for <code className="font-mono text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 px-1 rounded">{address}</code>:
+            Toggle params for <code className="font-mono text-slate-600 dark:text-slate-300 bg-surface dark:bg-slate-700 px-1 rounded">{address}</code>:
           </div>
-          <div className="flex flex-wrap gap-1 max-h-80 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded p-1.5 bg-white dark:bg-slate-700">
+          <div className="flex flex-wrap gap-1 max-h-80 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded p-1.5 bg-surface dark:bg-slate-700">
             {availableParams.map(p => {
               const active = params.includes(p)
               return (
@@ -136,7 +136,7 @@ export default function BindEditor({ bind = [], onChange, feat }) {
         />
       ))}
       {rows.length === 0 && (
-        <p className="text-slate-400 dark:text-slate-500 text-xs font-mono italic py-2 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg bg-white/60 dark:bg-slate-800/40">
+        <p className="text-slate-400 dark:text-slate-500 text-xs font-mono italic py-2 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg bg-surface/60 dark:bg-slate-800/40">
           No bind directives
         </p>
       )}

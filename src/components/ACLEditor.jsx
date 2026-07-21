@@ -131,10 +131,10 @@ function OptionDropdown({ value, onChange }) {
 
       {open && pos && createPortal(
         <div ref={portalRef}
-          className="fixed z-[90] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-xl"
+          className="fixed z-[90] bg-surface dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-xl"
           style={{ top: pos.top, left: pos.left, width: pos.width, maxHeight: 320, overflowY: 'auto', transform: 'translateX(-50%)' }}
         >
-          <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 px-2 py-1.5">
+          <div className="sticky top-0 bg-surface dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 px-2 py-1.5">
             <input
               autoFocus
               className="input text-xs py-1"
@@ -240,11 +240,11 @@ function ACLEditor({ acls = [], onChange, sectionLabel = '' }) {
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-slate-400 dark:text-slate-500 text-xs font-mono italic py-3 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg bg-white/60 dark:bg-slate-800/40">
+        <p className="text-slate-400 dark:text-slate-500 text-xs font-mono italic py-3 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg bg-surface/60 dark:bg-slate-800/40">
           No ACL rules
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700">
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-surface dark:bg-slate-800 dark:border-slate-700">
           <table className="w-full text-sm font-mono">
             <thead className="bg-slate-50 dark:bg-slate-700/60 border-b border-slate-200 dark:border-slate-600">
               <tr>

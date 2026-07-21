@@ -38,13 +38,13 @@ export default function InfoButton({ explanation, title }) {
   return (
     <>
       <button ref={btnRef}
-        className="opacity-30 hover:opacity-100 text-slate-400 dark:text-slate-500 hover:text-brand-500 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-full w-4 h-4 flex items-center justify-center text-[10px] leading-none shrink-0 transition-colors"
+        className="opacity-40 hover:opacity-100 text-emerald-400 dark:text-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-full w-4 h-4 flex items-center justify-center text-xs leading-none shrink-0 transition-colors"
         onClick={(e) => { e.stopPropagation(); setOpen(o => !o) }}
         title={title || 'Explicar esta regla'}
       >ⓘ</button>
       {open && pos && createPortal(
         <div data-info-popover
-          className="fixed z-[100] bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-500 rounded-lg shadow-xl py-1.5 px-3 max-w-xs"
+          className="fixed z-[100] bg-surface dark:bg-slate-700 border border-slate-200 dark:border-slate-500 rounded-lg shadow-xl py-1.5 px-3 max-w-xs"
           style={{ top: pos.top, left: pos.left, transform: 'translateX(-50%)' }}
         >
           <div className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-200">

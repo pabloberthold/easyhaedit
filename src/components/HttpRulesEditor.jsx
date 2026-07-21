@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useMemo, memo } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, Trash2, Save, ChevronDown } from 'lucide-react'
-import { getVersionData } from '../lib/haproxy-versions.js'
 import { getActionExplanation } from '../lib/haproxy-explanations.js'
 import InfoButton from './InfoButton'
 
@@ -271,8 +270,7 @@ function TcpRuleTable({ label, rules, onChange, types }) {
   )
 }
 
-function HttpRulesEditor({ section, onUpdate, sectionType, haVersion }) {
-  const feat = useMemo(() => getVersionData(haVersion), [haVersion])
+function HttpRulesEditor({ section, onUpdate, sectionType, feat }) {
   const reqTemplates = useMemo(() =>
     HTTP_REQ_TEMPLATES_BASE.filter(t => feat.http_request_actions.has(t.label)),
     [feat]
@@ -325,5 +323,5 @@ export default memo(HttpRulesEditor, (prev, next) =>
   JSON.stringify(prev.section) === JSON.stringify(next.section) &&
   prev.sectionType === next.sectionType &&
   prev.onUpdate === next.onUpdate &&
-  prev.haVersion === next.haVersion
+  prev.feat === next.feat
 )

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, memo } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
 import { getBindParamExplanation } from '../lib/haproxy-explanations.js'
 import InfoButton from './InfoButton'
@@ -92,7 +92,7 @@ function BindRow({ line, onChange, onRemove, feat }) {
   )
 }
 
-export default function BindEditor({ bind = [], onChange, feat }) {
+function BindEditor({ bind = [], onChange, feat }) {
   const [rows, setRows] = useState(() => bind.map((l, i) => ({ _id: i, line: l })))
   const [nextId, setNextId] = useState(bind.length)
 
@@ -143,3 +143,9 @@ export default function BindEditor({ bind = [], onChange, feat }) {
     </div>
   )
 }
+
+export default memo(BindEditor, (prev, next) =>
+  JSON.stringify(prev.bind) === JSON.stringify(next.bind) &&
+  prev.onChange === next.onChange &&
+  prev.feat?._version === next.feat?._version
+)

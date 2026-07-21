@@ -305,7 +305,7 @@ function EditorPanel({ type, section, onUpdate, visibleTabs, activeTab, setActiv
             section={section}
             onUpdate={onUpdate}
             sectionType={type}
-            haVersion={haVersion}
+            feat={feat}
           />
         )}
 

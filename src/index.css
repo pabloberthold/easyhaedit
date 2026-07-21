@@ -151,4 +151,8 @@
     from { opacity:0; transform: translateX(12px); }
     to   { opacity:1; transform: translateX(0); }
   }
+  @keyframes fadeInTooltip {
+    from { opacity:0; transform: translateY(3px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
 }

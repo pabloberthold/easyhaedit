@@ -651,7 +651,7 @@ export default function FlowDiagram({ config }) {
                 </div>
                 <pre className="text-xs font-mono text-emerald-300 whitespace-pre leading-relaxed m-0">{active.text}</pre>
               </div>
-              <style>{`@keyframes fadeInTooltip{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}`}</style>
+
             </div>
           )
         })()}

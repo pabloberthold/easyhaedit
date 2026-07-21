@@ -527,7 +527,6 @@ function SectionCard({ type, section, onUpdate, onRemove, onDuplicate, haVersion
 }
 
 export default memo(SectionCard, (prev, next) =>
-  JSON.stringify(prev.section) === JSON.stringify(next.section) &&
   prev.type === next.type &&
   prev.onUpdate === next.onUpdate &&
   prev.onRemove === next.onRemove &&

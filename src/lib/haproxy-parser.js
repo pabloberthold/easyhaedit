@@ -1,56 +1,9 @@
 // HAProxy .cfg Parser — pure JavaScript port of backend/app/services/parser.py
 // Parses raw haproxy.cfg text into a structured config object
 
+import { stripComment, kv, kvLower, splitSections, parseIntOr } from './haproxy-utils.js'
+
 const SECTION_RE = /^(global|defaults|frontend|backend|listen|resolvers|peers|userlist|program)\s*(.*)?$/
-
-function stripComment(line) {
-  let inQ = false, prev = ''
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]
-    if ((ch === '"' || ch === "'") && prev !== '\\') inQ = !inQ
-    if (ch === '#' && !inQ) return line.slice(0, i).trimEnd()
-    prev = ch
-  }
-  return line.trimEnd()
-}
-
-function splitSections(text) {
-  const result = []
-  let curType = null, curName = '', curLines = []
-  for (const raw of text.split('\n')) {
-    const line = stripComment(raw)
-    const stripped = line.trim()
-    if (!stripped) continue
-    const m = stripped.match(SECTION_RE)
-    if (m) {
-      if (curType !== null) result.push([curType, curName, curLines])
-      curType = m[1]
-      curName = (m[2] || '').trim()
-      curLines = []
-    } else if (curType !== null) {
-      curLines.push(stripped)
-    }
-  }
-  if (curType !== null) result.push([curType, curName, curLines])
-  return result
-}
-
-function kv(line) {
-  const idx = line.indexOf(' ')
-  return idx === -1 ? [line, ''] : [line.slice(0, idx), line.slice(idx + 1).trim()]
-}
-
-function kvLower(line) {
-  const idx = line.indexOf(' ')
-  const k = idx === -1 ? line : line.slice(0, idx)
-  const v = idx === -1 ? '' : line.slice(idx + 1).trim()
-  return [k.toLowerCase(), v]
-}
-
-function parseIntOr(val, fallback) {
-  const n = parseInt(val)
-  return isNaN(n) ? fallback : n
-}
 
 // ── Timeout parser ──────────────────────────────────────────────────────────
 
@@ -696,7 +649,7 @@ function parseProgram(name, lines) {
 
 export function parseConfigText(text) {
   try {
-    const sections = splitSections(text)
+    const sections = splitSections(text, SECTION_RE)
     let globalSection = null
     const defaults = []
     const frontends = []

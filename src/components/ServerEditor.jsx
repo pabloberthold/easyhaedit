@@ -289,7 +289,6 @@ function ServerEditor({ servers = [], onChange, feat }) {
 }
 
 export default memo(ServerEditor, (prev, next) =>
-  JSON.stringify(prev.servers) === JSON.stringify(next.servers) &&
   prev.onChange === next.onChange &&
   prev.feat?._version === next.feat?._version
 )

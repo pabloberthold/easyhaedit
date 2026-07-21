@@ -179,7 +179,7 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
     const key = `${type}s`
     const arr = [...(config[key] || [])]
     const orig = arr[idx]
-    const newSection = JSON.parse(JSON.stringify(orig))
+    const newSection = structuredClone(orig)
     newSection.name = `${orig.name}_copy`
     arr.splice(idx + 1, 0, newSection)
     setConfig({ ...config, [key]: arr }); if (setDirty) setDirty(true)
@@ -442,7 +442,7 @@ export default function App() {
         const next = action.payload
         if (next === state.config) return state
         const h = state.history.slice(0, state.pos + 1)
-        h.push(JSON.parse(JSON.stringify(next)))
+        h.push(structuredClone(next))
         if (h.length > 100) h.shift()
         return { ...state, config: next, history: h, pos: h.length - 1 }
       }

@@ -47,6 +47,7 @@ src/
 │   ├── haproxy-parser.js      # Parser → objeto estructurado (handlers modulares por sección)
 │   ├── haproxy-serializer.js  # Objeto → texto .cfg
 │   ├── haproxy-validator.js   # Validador sintáctico/semántico
+│   ├── haproxy-utils.js       # Utilidades compartidas (stripComment, kv, splitSections)
 │   └── haproxy-versions.js    # Perfiles de versión HAProxy 2.4-3.4
 ├── components/
 │   ├── SectionCard.jsx        # Editor visual por sección (modal popup con pestañas + validación)

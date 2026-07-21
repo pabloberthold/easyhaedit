@@ -24,7 +24,8 @@ const TYPE_BADGE = {
 
 const BALANCE_OPTIONS_BASE = [
   '', 'roundrobin', 'leastconn', 'source', 'random', 'uri',
-  'hdr', 'rdp-cookie', 'first', 'static-rr',
+  'hdr', 'rdp-cookie', 'first', 'static-rr', 'url_param',
+  'hash', 'log-hash',
 ]
 
 const TABS = [

@@ -44,7 +44,7 @@ Push a `main` — el `.github/workflows/deploy.yml` incluido compila y publica a
 ```
 src/
 ├── lib/
-│   ├── haproxy-parser.js      # Parser → objeto estructurado
+│   ├── haproxy-parser.js      # Parser → objeto estructurado (handlers modulares por sección)
 │   ├── haproxy-serializer.js  # Objeto → texto .cfg
 │   ├── haproxy-validator.js   # Validador sintáctico/semántico
 │   └── haproxy-versions.js    # Perfiles de versión HAProxy 2.4-3.4

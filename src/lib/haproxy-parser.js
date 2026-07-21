@@ -47,6 +47,11 @@ function kvLower(line) {
   return [k.toLowerCase(), v]
 }
 
+function parseIntOr(val, fallback) {
+  const n = parseInt(val)
+  return isNaN(n) ? fallback : n
+}
+
 // ── Timeout parser ──────────────────────────────────────────────────────────
 
 const TIMEOUT_MAP = {
@@ -68,7 +73,11 @@ function parseTimeout(rest, ts) {
   return false
 }
 
-// ── Global ──────────────────────────────────────────────────────────────────
+// ── Global handlers ─────────────────────────────────────────────────────────
+
+const GLOBAL_HANDLERS = []
+
+// (handlers are registered below)
 
 function parseGlobal(lines) {
   const d = {
@@ -81,62 +90,122 @@ function parseGlobal(lines) {
   for (const line of lines) {
     const [k, rest] = kv(line)
     const kl = k.toLowerCase()
-    if (kl === 'log') d.log.push(rest)
-    else if (kl === 'chroot') d.chroot = rest
-    else if (kl === 'user') d.user = rest
-    else if (kl === 'group') d.group = rest
-    else if (kl === 'uid') { const n = parseInt(rest); if (!isNaN(n)) d.uid = n; else d.extra_lines.push(line) }
-    else if (kl === 'gid') { const n = parseInt(rest); if (!isNaN(n)) d.gid = n; else d.extra_lines.push(line) }
-    else if (kl === 'daemon') d.daemon = true
-    else if (kl === 'master-worker') d.master_worker = true
-    else if (kl === 'expose-experimental-directives') d.expose_experimental_directives = true
-    else if (kl === 'maxconn') { const n = parseInt(rest); if (!isNaN(n)) d.maxconn = n; else d.extra_lines.push(line) }
-    else if (kl === 'nbproc') { const n = parseInt(rest); if (!isNaN(n)) d.nbproc = n; else d.extra_lines.push(line) }
-    else if (kl === 'nbthread') { const n = parseInt(rest); if (!isNaN(n)) d.nbthread = n; else d.extra_lines.push(line) }
-    else if (kl === 'cpu-map') d.cpu_map.push(rest)
-    else if (kl === 'numa-cpu-mapping') d.numa_cpu_mapping = rest
-    else if (kl === 'ulimit-n') { const n = parseInt(rest); if (!isNaN(n)) d.ulimit_n = n; else d.extra_lines.push(line) }
-    else if (kl === 'pidfile') d.pidfile = rest
-    else if (kl === 'description') d.description = rest
-    else if (kl === 'node') d.node = rest
-    else if (kl === 'localpeer') d.localpeer = rest
-    else if (kl === 'stats') {
-      const [sub, sv] = kv(rest)
-      if (sub === 'socket') d.stats_socket.push(sv)
-      else if (sub === 'timeout') d.stats_timeout = sv
-      else if (sub === 'maxconn') { const n = parseInt(sv); if (!isNaN(n)) d.stats_maxconn = n; else d.extra_lines.push(line) }
-      else d.extra_lines.push(line)
-    }
-    else if (kl === 'log-send-hostname') d.log_send_hostname = rest
-    else if (kl === 'log-tag') d.log_tag = rest
-    else if (kl === 'ca-base') d.ca_base = rest
-    else if (kl === 'crt-base') d.crt_base = rest
-    else if (kl === 'ssl-default-bind-ciphers') d.ssl_default_bind_ciphers = rest
-    else if (kl === 'ssl-default-bind-ciphersuites') d.ssl_default_bind_ciphersuites = rest
-    else if (kl === 'ssl-default-bind-options') d.ssl_default_bind_options = rest
-    else if (kl === 'ssl-default-server-ciphers') d.ssl_default_server_ciphers = rest
-    else if (kl === 'ssl-default-server-ciphersuites') d.ssl_default_server_ciphersuites = rest
-    else if (kl === 'ssl-default-server-options') d.ssl_default_server_options = rest
-    else if (kl === 'ssl-dh-param-file') d.ssl_dh_param_file = rest
-    else if (kl === 'ssl-server-verify') d.ssl_server_verify = rest
-    else if (kl === 'tune.ssl.maxrecord') { const n = parseInt(rest); if (!isNaN(n)) d.tune_ssl_maxrecord = n; else d.extra_lines.push(line) }
-    else if (kl === 'tune.maxrewrite') { const n = parseInt(rest); if (!isNaN(n)) d.tune_maxrewrite = n; else d.extra_lines.push(line) }
-    else if (kl === 'tune.bufsize') { const n = parseInt(rest); if (!isNaN(n)) d.tune_bufsize = n; else d.extra_lines.push(line) }
-    else if (kl === 'tune.http.maxhdr') { const n = parseInt(rest); if (!isNaN(n)) d.tune_http_maxhdr = n; else d.extra_lines.push(line) }
-    else if (kl === 'tune.idle-pool.shared') d.tune_idle_pool_shared = rest
-    else if (kl === 'tune.rcvbuf.client') { const n = parseInt(rest); if (!isNaN(n)) d.tune_rcvbuf_client = n; else d.extra_lines.push(line) }
-    else if (kl === 'tune.rcvbuf.server') { const n = parseInt(rest); if (!isNaN(n)) d.tune_rcvbuf_server = n; else d.extra_lines.push(line) }
-    else if (kl === 'tune.sndbuf.client') { const n = parseInt(rest); if (!isNaN(n)) d.tune_sndbuf_client = n; else d.extra_lines.push(line) }
-    else if (kl === 'tune.sndbuf.server') { const n = parseInt(rest); if (!isNaN(n)) d.tune_sndbuf_server = n; else d.extra_lines.push(line) }
-    else if (kl === 'external-check') d.external_check = true
-    else if (kl === 'insecure-fork-wanted') d.insecure_fork_wanted = true
-    else if (kl === 'set-var') d.set_var.push(rest)
-    else if (kl === 'setenv') d.setenv.push(rest)
-    else if (kl === 'presetenv') d.presetenv.push(rest)
-    else d.extra_lines.push(line)
+    const handled = GLOBAL_HANDLERS.some(h => h(kl, rest, line, d))
+    if (!handled) d.extra_lines.push(line)
   }
   return d
 }
+
+function gLog(kl, rest, line, d) { if (kl === 'log') { d.log.push(rest); return true } return false }
+function gChroot(kl, rest, line, d) { if (kl === 'chroot') { d.chroot = rest; return true } return false }
+function gUser(kl, rest, line, d) { if (kl === 'user') { d.user = rest; return true } return false }
+function gGroup(kl, rest, line, d) { if (kl === 'group') { d.group = rest; return true } return false }
+function gUid(kl, rest, line, d) { if (kl === 'uid') { d.uid = parseIntOr(rest); if (d.uid == null) d.extra_lines.push(line); return true } return false }
+function gGid(kl, rest, line, d) { if (kl === 'gid') { d.gid = parseIntOr(rest); if (d.gid == null) d.extra_lines.push(line); return true } return false }
+function gDaemon(kl, rest, line, d) { if (kl === 'daemon') { d.daemon = true; return true } return false }
+function gMasterWorker(kl, rest, line, d) { if (kl === 'master-worker') { d.master_worker = true; return true } return false }
+function gExposeExp(kl, rest, line, d) { if (kl === 'expose-experimental-directives') { d.expose_experimental_directives = true; return true } return false }
+function gMaxconn(kl, rest, line, d) { if (kl === 'maxconn') { d.maxconn = parseIntOr(rest); if (d.maxconn == null) d.extra_lines.push(line); return true } return false }
+function gNbproc(kl, rest, line, d) { if (kl === 'nbproc') { d.nbproc = parseIntOr(rest); if (d.nbproc == null) d.extra_lines.push(line); return true } return false }
+function gNbthread(kl, rest, line, d) { if (kl === 'nbthread') { d.nbthread = parseIntOr(rest); if (d.nbthread == null) d.extra_lines.push(line); return true } return false }
+function gCpuMap(kl, rest, line, d) { if (kl === 'cpu-map') { d.cpu_map.push(rest); return true } return false }
+function gNuma(kl, rest, line, d) { if (kl === 'numa-cpu-mapping') { d.numa_cpu_mapping = rest; return true } return false }
+function gUlimitN(kl, rest, line, d) { if (kl === 'ulimit-n') { d.ulimit_n = parseIntOr(rest); if (d.ulimit_n == null) d.extra_lines.push(line); return true } return false }
+function gPidfile(kl, rest, line, d) { if (kl === 'pidfile') { d.pidfile = rest; return true } return false }
+function gDescription(kl, rest, line, d) { if (kl === 'description') { d.description = rest; return true } return false }
+function gNode(kl, rest, line, d) { if (kl === 'node') { d.node = rest; return true } return false }
+function gLocalpeer(kl, rest, line, d) { if (kl === 'localpeer') { d.localpeer = rest; return true } return false }
+function gStats(kl, rest, line, d) {
+  if (kl !== 'stats') return false
+  const [sub, sv] = kv(rest)
+  if (sub === 'socket') d.stats_socket.push(sv)
+  else if (sub === 'timeout') d.stats_timeout = sv
+  else if (sub === 'maxconn') { const n = parseInt(sv); if (!isNaN(n)) d.stats_maxconn = n; else d.extra_lines.push(line) }
+  else d.extra_lines.push(line)
+  return true
+}
+function gLogSendHost(kl, rest, line, d) { if (kl === 'log-send-hostname') { d.log_send_hostname = rest; return true } return false }
+function gLogTag(kl, rest, line, d) { if (kl === 'log-tag') { d.log_tag = rest; return true } return false }
+function gCaBase(kl, rest, line, d) { if (kl === 'ca-base') { d.ca_base = rest; return true } return false }
+function gCrtBase(kl, rest, line, d) { if (kl === 'crt-base') { d.crt_base = rest; return true } return false }
+function gSslBindCiphers(kl, rest, line, d) { if (kl === 'ssl-default-bind-ciphers') { d.ssl_default_bind_ciphers = rest; return true } return false }
+function gSslBindCiphersuites(kl, rest, line, d) { if (kl === 'ssl-default-bind-ciphersuites') { d.ssl_default_bind_ciphersuites = rest; return true } return false }
+function gSslBindOptions(kl, rest, line, d) { if (kl === 'ssl-default-bind-options') { d.ssl_default_bind_options = rest; return true } return false }
+function gSslServerCiphers(kl, rest, line, d) { if (kl === 'ssl-default-server-ciphers') { d.ssl_default_server_ciphers = rest; return true } return false }
+function gSslServerCiphersuites(kl, rest, line, d) { if (kl === 'ssl-default-server-ciphersuites') { d.ssl_default_server_ciphersuites = rest; return true } return false }
+function gSslServerOptions(kl, rest, line, d) { if (kl === 'ssl-default-server-options') { d.ssl_default_server_options = rest; return true } return false }
+function gSslDh(kl, rest, line, d) { if (kl === 'ssl-dh-param-file') { d.ssl_dh_param_file = rest; return true } return false }
+function gSslVerify(kl, rest, line, d) { if (kl === 'ssl-server-verify') { d.ssl_server_verify = rest; return true } return false }
+function gTuneMaxrecord(kl, rest, line, d) { if (kl === 'tune.ssl.maxrecord') { d.tune_ssl_maxrecord = parseIntOr(rest); if (d.tune_ssl_maxrecord == null) d.extra_lines.push(line); return true } return false }
+function gTuneMaxrewrite(kl, rest, line, d) { if (kl === 'tune.maxrewrite') { d.tune_maxrewrite = parseIntOr(rest); if (d.tune_maxrewrite == null) d.extra_lines.push(line); return true } return false }
+function gTuneBufsize(kl, rest, line, d) { if (kl === 'tune.bufsize') { d.tune_bufsize = parseIntOr(rest); if (d.tune_bufsize == null) d.extra_lines.push(line); return true } return false }
+function gTuneMaxhdr(kl, rest, line, d) { if (kl === 'tune.http.maxhdr') { d.tune_http_maxhdr = parseIntOr(rest); if (d.tune_http_maxhdr == null) d.extra_lines.push(line); return true } return false }
+function gTuneIdlePool(kl, rest, line, d) { if (kl === 'tune.idle-pool.shared') { d.tune_idle_pool_shared = rest; return true } return false }
+function gTuneRcvbufClient(kl, rest, line, d) { if (kl === 'tune.rcvbuf.client') { d.tune_rcvbuf_client = parseIntOr(rest); if (d.tune_rcvbuf_client == null) d.extra_lines.push(line); return true } return false }
+function gTuneRcvbufServer(kl, rest, line, d) { if (kl === 'tune.rcvbuf.server') { d.tune_rcvbuf_server = parseIntOr(rest); if (d.tune_rcvbuf_server == null) d.extra_lines.push(line); return true } return false }
+function gTuneSndbufClient(kl, rest, line, d) { if (kl === 'tune.sndbuf.client') { d.tune_sndbuf_client = parseIntOr(rest); if (d.tune_sndbuf_client == null) d.extra_lines.push(line); return true } return false }
+function gTuneSndbufServer(kl, rest, line, d) { if (kl === 'tune.sndbuf.server') { d.tune_sndbuf_server = parseIntOr(rest); if (d.tune_sndbuf_server == null) d.extra_lines.push(line); return true } return false }
+function gExtCheck(kl, rest, line, d) { if (kl === 'external-check') { d.external_check = true; return true } return false }
+function gInsecureFork(kl, rest, line, d) { if (kl === 'insecure-fork-wanted') { d.insecure_fork_wanted = true; return true } return false }
+function gSetVar(kl, rest, line, d) { if (kl === 'set-var') { d.set_var.push(rest); return true } return false }
+function gSetenv(kl, rest, line, d) { if (kl === 'setenv') { d.setenv.push(rest); return true } return false }
+function gPresetenv(kl, rest, line, d) { if (kl === 'presetenv') { d.presetenv.push(rest); return true } return false }
+
+GLOBAL_HANDLERS.push(
+  gLog, gChroot, gUser, gGroup, gUid, gGid, gDaemon, gMasterWorker,
+  gExposeExp, gMaxconn, gNbproc, gNbthread, gCpuMap, gNuma, gUlimitN,
+  gPidfile, gDescription, gNode, gLocalpeer, gStats,
+  gLogSendHost, gLogTag, gCaBase, gCrtBase,
+  gSslBindCiphers, gSslBindCiphersuites, gSslBindOptions,
+  gSslServerCiphers, gSslServerCiphersuites, gSslServerOptions,
+  gSslDh, gSslVerify,
+  gTuneMaxrecord, gTuneMaxrewrite, gTuneBufsize, gTuneMaxhdr,
+  gTuneIdlePool, gTuneRcvbufClient, gTuneRcvbufServer,
+  gTuneSndbufClient, gTuneSndbufServer,
+  gExtCheck, gInsecureFork,
+  gSetVar, gSetenv, gPresetenv,
+)
+
+// ── Defaults handlers ───────────────────────────────────────────────────────
+
+function hMode(k, rest, line, ctx) { if (k === 'mode') { ctx.d.mode = rest; return true } return false }
+function hDefaultsLog(k, rest, line, ctx) { if (k === 'log') { ctx.d.log.push(rest); return true } return false }
+function hOption(k, rest, line, ctx) { if (k === 'option') { ctx.d.options.push(rest); return true } return false }
+function hTimeout(k, rest, line, ctx) { if (k === 'timeout') { if (!parseTimeout(rest, ctx.ts)) ctx.d.extra_lines.push(line); return true } return false }
+function hRetries(k, rest, line, ctx) { if (k === 'retries') { const n = parseInt(rest); if (!isNaN(n)) ctx.d.retries = n; else ctx.d.extra_lines.push(line); return true } return false }
+function hDefaultsMaxconn(k, rest, line, ctx) { if (k === 'maxconn') { ctx.d.maxconn = parseIntOr(rest); if (ctx.d.maxconn == null) ctx.d.extra_lines.push(line); return true } return false }
+function hBalance(k, rest, line, ctx) { if (k === 'balance') { ctx.d.balance = rest; return true } return false }
+function hHashType(k, rest, line, ctx) { if (k === 'hash-type') { ctx.d.hash_type = rest; return true } return false }
+function hLogFormat(k, rest, line, ctx) { if (k === 'log-format') { ctx.d.log_format = rest; return true } return false }
+function hLogFormatSd(k, rest, line, ctx) { if (k === 'log-format-sd') { ctx.d.log_format_sd = rest; return true } return false }
+function hDefaultsLogTag(k, rest, line, ctx) { if (k === 'log-tag') { ctx.d.log_tag = rest; return true } return false }
+function hHttpReuse(k, rest, line, ctx) { if (k === 'http-reuse') { ctx.d.http_reuse = rest; return true } return false }
+function hUniqueIdFormat(k, rest, line, ctx) { if (k === 'unique-id-format') { ctx.d.unique_id_format = rest; return true } return false }
+function hUniqueIdHeader(k, rest, line, ctx) { if (k === 'unique-id-header') { ctx.d.unique_id_header = rest; return true } return false }
+function hErrorfile(k, rest, line, ctx) { if (k === 'errorfile') { ctx.d.errorfile.push(rest); return true } return false }
+function hErrorloc(k, rest, line, ctx) { if (k === 'errorloc') { ctx.d.errorloc.push(rest); return true } return false }
+function hErrorloc302(k, rest, line, ctx) { if (k === 'errorloc302') { ctx.d.errorloc302.push(rest); return true } return false }
+
+function hDefaultsStats(k, rest, line, ctx) {
+  if (k !== 'stats') return false
+  const [sub, sv] = kv(rest)
+  if (sub === 'uri') ctx.d.stats_uri = sv
+  else if (sub === 'realm') ctx.d.stats_realm = sv
+  else if (sub === 'auth') ctx.d.stats_auth.push(sv)
+  else if (sub === 'refresh') ctx.d.stats_refresh = sv
+  else if (sub === 'admin') ctx.d.stats_admin = sv
+  else ctx.d.extra_lines.push(line)
+  return true
+}
+
+function hLoadState(k, rest, line, ctx) { if (k === 'load-server-state-from-file') { ctx.d.load_server_state_from_file = rest; return true } return false }
+
+const DEFAULTS_HANDLERS = [
+  hMode, hDefaultsLog, hOption, hTimeout, hRetries, hDefaultsMaxconn,
+  hBalance, hHashType, hLogFormat, hLogFormatSd, hDefaultsLogTag,
+  hHttpReuse, hUniqueIdFormat, hUniqueIdHeader,
+  hErrorfile, hErrorloc, hErrorloc302, hDefaultsStats, hLoadState,
+]
 
 // ── Defaults ────────────────────────────────────────────────────────────────
 
@@ -146,37 +215,14 @@ function parseDefaults(name, lines) {
     errorloc302: [], stats_auth: [], extra_lines: [],
   }
   const ts = {}
+  const ctx = { d, ts }
+
   for (const line of lines) {
     const [k, rest] = kvLower(line)
-    if (k === 'mode') d.mode = rest
-    else if (k === 'log') d.log.push(rest)
-    else if (k === 'option') d.options.push(rest)
-    else if (k === 'timeout') { if (!parseTimeout(rest, ts)) d.extra_lines.push(line) }
-    else if (k === 'retries') { const n = parseInt(rest); if (!isNaN(n)) d.retries = n; else d.extra_lines.push(line) }
-    else if (k === 'maxconn') { const n = parseInt(rest); if (!isNaN(n)) d.maxconn = n; else d.extra_lines.push(line) }
-    else if (k === 'balance') d.balance = rest
-    else if (k === 'hash-type') d.hash_type = rest
-    else if (k === 'log-format') d.log_format = rest
-    else if (k === 'log-format-sd') d.log_format_sd = rest
-    else if (k === 'log-tag') d.log_tag = rest
-    else if (k === 'http-reuse') d.http_reuse = rest
-    else if (k === 'unique-id-format') d.unique_id_format = rest
-    else if (k === 'unique-id-header') d.unique_id_header = rest
-    else if (k === 'errorfile') d.errorfile.push(rest)
-    else if (k === 'errorloc') d.errorloc.push(rest)
-    else if (k === 'errorloc302') d.errorloc302.push(rest)
-    else if (k === 'stats') {
-      const [sub, sv] = kv(rest)
-      if (sub === 'uri') d.stats_uri = sv
-      else if (sub === 'realm') d.stats_realm = sv
-      else if (sub === 'auth') d.stats_auth.push(sv)
-      else if (sub === 'refresh') d.stats_refresh = sv
-      else if (sub === 'admin') d.stats_admin = sv
-      else d.extra_lines.push(line)
-    }
-    else if (k === 'load-server-state-from-file') d.load_server_state_from_file = rest
-    else d.extra_lines.push(line)
+    const handled = DEFAULTS_HANDLERS.some(h => h(k, rest, line, ctx))
+    if (!handled) d.extra_lines.push(line)
   }
+
   d.timeouts = ts
   return d
 }
@@ -289,6 +335,11 @@ function parseCookie(rest) {
 
 // ── Health options ─────────────────────────────────────────────────────────
 
+const HEALTH_OPT_DIRECTIVES = new Set([
+  'httpchk', 'smtpchk', 'mysql-check', 'pgsql-check', 'redis-check',
+  'ssl-hello-chk', 'tcp-check',
+])
+
 function parseHealthOptions(line, hc) {
   const [k, rest] = kvLower(line)
   if (k === 'option') {
@@ -315,6 +366,206 @@ function parseHealthOptions(line, hc) {
   return false
 }
 
+// ── Proxy directive handlers ───────────────────────────────────────────────
+
+function handleMode(k, rest, line, ctx) { if (k === 'mode') { ctx.d.mode = rest; return true } return false }
+function handleBalance(k, rest, line, ctx) { if (k === 'balance') { ctx.d.balance = rest; return true } return false }
+function handleHashType(k, rest, line, ctx) { if (k === 'hash-type') { ctx.d.hash_type = rest; return true } return false }
+function handleMaxconn(k, rest, line, ctx) { if (k === 'maxconn') { const n = parseInt(rest); if (!isNaN(n)) ctx.d.maxconn = n; else ctx.d.extra_lines.push(line); return true } return false }
+function handleFullconn(k, rest, line, ctx) { if (k === 'fullconn') { const n = parseInt(rest); if (!isNaN(n)) ctx.d.fullconn = n; else ctx.d.extra_lines.push(line); return true } return false }
+function handleBind(k, rest, line, ctx) { if (k === 'bind') { if (!ctx.d.bind) ctx.d.bind = []; ctx.d.bind.push(rest); return true } return false }
+
+function handleOption(k, rest, line, ctx) {
+  if (k !== 'option') return false
+  const opt = rest.split(/\s+/)[0].toLowerCase()
+  if (HEALTH_OPT_DIRECTIVES.has(opt)) {
+    parseHealthOptions(line, ctx.hc)
+  } else {
+    ctx.d.options.push(rest)
+  }
+  return true
+}
+function handleHttpCheck(k, rest, line, ctx) { if (k === 'http-check' || k === 'tcp-check') { if (!parseHealthOptions(line, ctx.hc)) ctx.d.extra_lines.push(line); return true } return false }
+function handleLog(k, rest, line, ctx) { if (k === 'log') { ctx.d.log.push(rest); return true } return false }
+function handleLogFormat(k, rest, line, ctx) { if (k === 'log-format') { ctx.d.log_format = rest; return true } return false }
+function handleLogFormatSd(k, rest, line, ctx) { if (k === 'log-format-sd') { ctx.d.log_format_sd = rest; return true } return false }
+function handleLogTag(k, rest, line, ctx) { if (k === 'log-tag') { ctx.d.log_tag = rest; return true } return false }
+function handleTimeout(k, rest, line, ctx) { if (k === 'timeout') { if (!parseTimeout(rest, ctx.ts)) ctx.d.extra_lines.push(line); return true } return false }
+
+function handleAcl(k, rest, line, ctx) {
+  if (k !== 'acl') return false
+  const parts = rest.split(/\s+/, 2)
+  if (parts.length === 2) ctx.d.acls.push({ name: parts[0], criterion: parts[1] })
+  else ctx.d.extra_lines.push(line)
+  return true
+}
+
+function handleHttpAction(keyName, target, k, rest, line, ctx) {
+  if (k !== keyName) return false
+  const m = rest.match(/\s+(if|unless)\s+(.+)$/)
+  const action = m ? rest.slice(0, m.index).trim() : rest
+  const cond = m ? m[0].trim() : null
+  ctx.d[target].push({ action, condition: cond })
+  return true
+}
+function handleHttpRequest(k, rest, line, ctx) { return handleHttpAction('http-request', 'http_request', k, rest, line, ctx) }
+function handleHttpResponse(k, rest, line, ctx) { return handleHttpAction('http-response', 'http_response', k, rest, line, ctx) }
+function handleHttpAfterResponse(k, rest, line, ctx) { return handleHttpAction('http-after-response', 'http_after_response', k, rest, line, ctx) }
+
+function handleTcpAction(keyName, target, validTypes, k, rest, line, ctx) {
+  if (k !== keyName) return false
+  const parts = rest.split(/\s+/, 2)
+  const tcpType = parts[0].toLowerCase()
+  const tcpRest = parts.length > 1 ? parts[1] : ''
+  const m = tcpRest.match(/\s+(if|unless)\s+(.+)$/)
+  const action = m ? tcpRest.slice(0, m.index).trim() : tcpRest
+  const cond = m ? m[0].trim() : null
+  if (validTypes.includes(tcpType)) ctx.d[target].push({ type: tcpType, action, condition: cond })
+  else ctx.d.extra_lines.push(line)
+  return true
+}
+const TCP_REQ_TYPES = ['connection', 'content', 'session', 'inspect-delay']
+const TCP_RESP_TYPES = ['content', 'inspect-delay']
+function handleTcpRequest(k, rest, line, ctx) { return handleTcpAction('tcp-request', 'tcp_request', TCP_REQ_TYPES, k, rest, line, ctx) }
+function handleTcpResponse(k, rest, line, ctx) { return handleTcpAction('tcp-response', 'tcp_response', TCP_RESP_TYPES, k, rest, line, ctx) }
+
+function handleUseBackend(k, rest, line, ctx) {
+  if (k !== 'use_backend') return false
+  const parts = rest.split(/\s+/, 2)
+  ctx.d.use_backends.push({ backend: parts[0], condition: parts[1] || null })
+  return true
+}
+function handleDefaultBackend(k, rest, line, ctx) {
+  if (k !== 'default_backend') return false
+  ctx.d.default_backend = rest.split(/\s+/)[0]
+  return true
+}
+function handleStickTable(k, rest, line, ctx) { if (k === 'stick-table') { ctx.d.stick_table = parseStickTable(rest); return true } return false }
+
+function handleStick(k, rest, line, ctx) {
+  if (k !== 'stick') return false
+  const parts = rest.split(/\s+/, 3)
+  if (parts.length) {
+    const action = parts[0].toLowerCase()
+    const valid = ['store-request', 'match', 'on', 'store-response']
+    if (valid.includes(action) && parts.length >= 2) {
+      const expr = parts[1]
+      let extra = parts.length > 2 ? parts[2] : ''
+      let table = null
+      const tm = extra.match(/table\s+(\S+)/)
+      if (tm) {
+        table = tm[1]
+        extra = extra.slice(0, tm.index).trim() + ' ' + extra.slice(tm.index + tm[0].length).trim()
+        extra = extra.trim()
+      }
+      const cond = extra || null
+      ctx.d.stick_rules.push({ action, expression: expr, table, condition: cond })
+    } else ctx.d.extra_lines.push(line)
+  } else ctx.d.extra_lines.push(line)
+  return true
+}
+function handleCookie(k, rest, line, ctx) { if (k === 'cookie') { const c = parseCookie(rest); if (c) ctx.d.cookie = c; else ctx.d.extra_lines.push(line); return true } return false }
+
+function handleCompression(k, rest, line, ctx) {
+  if (k !== 'compression') return false
+  const [sub, sv] = kv(rest)
+  const sl = sub.toLowerCase()
+  if (sl === 'algo') ctx.d._comp_algo = sv
+  else if (sl === 'type') {
+    if (!ctx.d._comp_types) ctx.d._comp_types = []
+    sv.split(/\s+/).forEach(t => ctx.d._comp_types.push(t))
+  }
+  else if (sl === 'offload') ctx.d._comp_offload = true
+  else ctx.d.extra_lines.push(line)
+  return true
+}
+function handleServer(k, rest, line, ctx) { if (k === 'server' && line.split(/\s+/).length >= 3) { const srv = parseServer(line); if (srv) ctx.d.servers.push(srv); else ctx.d.extra_lines.push(line); return true } return false }
+function handleServerTemplate(k, rest, line, ctx) { if (k === 'server-template') { const st = parseServerTemplate(line); if (st) ctx.d.server_templates.push(st); else ctx.d.extra_lines.push(line); return true } return false }
+function handleServerDefaults(k, rest, line, ctx) { if (k === 'server-defaults') { ctx.d.server_defaults = { params: rest }; return true } return false }
+function handleHttpReuse(k, rest, line, ctx) { if (k === 'http-reuse') { ctx.d.http_reuse = rest; return true } return false }
+function handleHttpSendNameHeader(k, rest, line, ctx) { if (k === 'http-send-name-header') { ctx.d.http_send_name_header = rest; return true } return false }
+function handleRedirect(k, rest, line, ctx) { if (k === 'redirect') { ctx.d.redirect.push(rest); return true } return false }
+function handleSource(k, rest, line, ctx) { if (k === 'source') { ctx.d.source = rest; return true } return false }
+function handleIgnorePersist(k, rest, line, ctx) { if (k === 'ignore-persist' || k === 'ignore_persist') { ctx.d.ignore_persist.push(rest); return true } return false }
+function handleForcePersist(k, rest, line, ctx) { if (k === 'force-persist') { ctx.d.force_persist.push(rest); return true } return false }
+
+function handleExternalCheck(k, rest, line, ctx) {
+  if (k !== 'external-check') return false
+  const [sub, sv] = kv(rest)
+  if (sub === 'command') ctx.d.external_check_command = sv
+  else if (sub === 'path') ctx.d.external_check_path = sv
+  else ctx.d.extra_lines.push(line)
+  return true
+}
+function handleErrorfile(k, rest, line, ctx) { if (k === 'errorfile') { ctx.d.errorfile.push(rest); return true } return false }
+function handleErrorloc(k, rest, line, ctx) { if (k === 'errorloc') { if (!ctx.d.errorloc) ctx.d.errorloc = []; ctx.d.errorloc.push(rest); return true } return false }
+
+function handleStats(k, rest, line, ctx) {
+  if (k !== 'stats') return false
+  const [sub, sv] = kv(rest)
+  if (sub === 'uri') ctx.d.stats_uri = sv
+  else if (sub === 'realm') ctx.d.stats_realm = sv
+  else if (sub === 'auth') ctx.d.stats_auth.push(sv)
+  else if (sub === 'refresh') ctx.d.stats_refresh = sv
+  else if (sub === 'admin') ctx.d.stats_admin = sv
+  else if (sub === 'show-legends') ctx.d.stats_show_legends = true
+  else if (sub === 'show-node') ctx.d.stats_show_node = sv
+  else if (sub === 'hide-version') ctx.d.stats_hide_version = true
+  else if (sub === 'enable' || sub === 'disable') ctx.d.extra_lines.push(line)
+  else ctx.d.extra_lines.push(line)
+  return true
+}
+function handleUniqueIdFormat(k, rest, line, ctx) { if (k === 'unique-id-format') { ctx.d.unique_id_format = rest; return true } return false }
+function handleUniqueIdHeader(k, rest, line, ctx) { if (k === 'unique-id-header') { ctx.d.unique_id_header = rest; return true } return false }
+
+function handleCapture(k, rest, line, ctx) {
+  if (k !== 'capture') return false
+  const [sub, sv] = kv(rest)
+  if (sub === 'request') {
+    if (!ctx.d.capture_request_header) ctx.d.capture_request_header = []
+    ctx.d.capture_request_header.push(sv.replace(/^header\s+/, ''))
+  } else if (sub === 'response') {
+    if (!ctx.d.capture_response_header) ctx.d.capture_response_header = []
+    ctx.d.capture_response_header.push(sv.replace(/^header\s+/, ''))
+  } else ctx.d.extra_lines.push(line)
+  return true
+}
+function handleMonitorUri(k, rest, line, ctx) { if (k === 'monitor-uri') { ctx.d.monitor_uri = rest; return true } return false }
+
+function handleMonitor(k, rest, line, ctx) {
+  if (k !== 'monitor') return false
+  const [sub, sv] = kv(rest)
+  if (sub === 'fail') { if (!ctx.d.monitor_fail) ctx.d.monitor_fail = []; ctx.d.monitor_fail.push(sv) }
+  else ctx.d.extra_lines.push(line)
+  return true
+}
+function handleRandom(k, rest, line, ctx) {
+  if (k !== 'random') return false
+  const [sub, sv] = kv(rest)
+  if (sub === 'draws') { const n = parseInt(sv); if (!isNaN(n)) ctx.d.random_draws = n; else ctx.d.extra_lines.push(line) }
+  else ctx.d.extra_lines.push(line)
+  return true
+}
+
+const PROXY_HANDLERS = [
+  handleMode, handleBalance, handleHashType,
+  handleMaxconn, handleFullconn, handleBind,
+  handleOption, handleHttpCheck,
+  handleLog, handleLogFormat, handleLogFormatSd, handleLogTag,
+  handleTimeout, handleAcl,
+  handleHttpRequest, handleHttpResponse, handleHttpAfterResponse,
+  handleTcpRequest, handleTcpResponse,
+  handleUseBackend, handleDefaultBackend,
+  handleStickTable, handleStick, handleCookie,
+  handleCompression, handleServer, handleServerTemplate, handleServerDefaults,
+  handleHttpReuse, handleHttpSendNameHeader,
+  handleRedirect, handleSource,
+  handleIgnorePersist, handleForcePersist,
+  handleExternalCheck, handleErrorfile, handleErrorloc,
+  handleStats, handleUniqueIdFormat, handleUniqueIdHeader,
+  handleCapture, handleMonitorUri, handleMonitor, handleRandom,
+]
+
 // ── Proxy common ───────────────────────────────────────────────────────────
 
 function parseProxyCommon(lines) {
@@ -323,187 +574,19 @@ function parseProxyCommon(lines) {
     http_request: [], http_response: [], http_after_response: [],
     tcp_request: [], tcp_response: [],
     use_backends: [], stick_rules: [],
-    errorfile: [], stats_auth: [],
+    errorfile: [], errorloc: [], stats_auth: [],
     servers: [], server_templates: [],
     redirect: [], ignore_persist: [], force_persist: [],
     extra_lines: [],
   }
   const ts = {}
   const hc = { tcp_check_rules: [] }
+  const ctx = { d, ts, hc }
 
   for (const line of lines) {
     const [k, rest] = kvLower(line)
-    if (k === 'mode') d.mode = rest
-    else if (k === 'balance') d.balance = rest
-    else if (k === 'hash-type') d.hash_type = rest
-    else if (k === 'maxconn') { const n = parseInt(rest); if (!isNaN(n)) d.maxconn = n; else d.extra_lines.push(line) }
-    else if (k === 'fullconn') { const n = parseInt(rest); if (!isNaN(n)) d.fullconn = n; else d.extra_lines.push(line) }
-    else if (k === 'bind') { if (!d.bind) d.bind = []; d.bind.push(rest) }
-    else if (k === 'option') {
-      const opt = rest.split(/\s+/)[0].toLowerCase()
-      if (['httpchk', 'smtpchk', 'mysql-check', 'pgsql-check', 'redis-check', 'ssl-hello-chk', 'tcp-check'].includes(opt)) {
-        parseHealthOptions(line, hc)
-      } else {
-        d.options.push(rest)
-      }
-    }
-    else if (k === 'http-check' || k === 'tcp-check') { if (!parseHealthOptions(line, hc)) d.extra_lines.push(line) }
-    else if (k === 'log') d.log.push(rest)
-    else if (k === 'log-format') d.log_format = rest
-    else if (k === 'log-format-sd') d.log_format_sd = rest
-    else if (k === 'log-tag') d.log_tag = rest
-    else if (k === 'timeout') { if (!parseTimeout(rest, ts)) d.extra_lines.push(line) }
-    else if (k === 'acl') {
-      const parts = rest.split(/\s+/, 2)
-      if (parts.length === 2) d.acls.push({ name: parts[0], criterion: parts[1] })
-      else d.extra_lines.push(line)
-    }
-    else if (k === 'http-request') {
-      const m = rest.match(/\s+(if|unless)\s+(.+)$/)
-      const action = m ? rest.slice(0, m.index).trim() : rest
-      const cond = m ? m[0].trim() : null
-      d.http_request.push({ action, condition: cond })
-    }
-    else if (k === 'http-response') {
-      const m = rest.match(/\s+(if|unless)\s+(.+)$/)
-      const action = m ? rest.slice(0, m.index).trim() : rest
-      const cond = m ? m[0].trim() : null
-      d.http_response.push({ action, condition: cond })
-    }
-    else if (k === 'http-after-response') {
-      const m = rest.match(/\s+(if|unless)\s+(.+)$/)
-      const action = m ? rest.slice(0, m.index).trim() : rest
-      const cond = m ? m[0].trim() : null
-      d.http_after_response.push({ action, condition: cond })
-    }
-    else if (k === 'tcp-request') {
-      const parts = rest.split(/\s+/, 2)
-      const tcpType = parts[0].toLowerCase()
-      const tcpRest = parts.length > 1 ? parts[1] : ''
-      const m = tcpRest.match(/\s+(if|unless)\s+(.+)$/)
-      const action = m ? tcpRest.slice(0, m.index).trim() : tcpRest
-      const cond = m ? m[0].trim() : null
-      const valid = ['connection', 'content', 'session', 'inspect-delay']
-      if (valid.includes(tcpType)) d.tcp_request.push({ type: tcpType, action, condition: cond })
-      else d.extra_lines.push(line)
-    }
-    else if (k === 'tcp-response') {
-      const parts = rest.split(/\s+/, 2)
-      const tcpType = parts[0].toLowerCase()
-      const tcpRest = parts.length > 1 ? parts[1] : ''
-      const m = tcpRest.match(/\s+(if|unless)\s+(.+)$/)
-      const action = m ? tcpRest.slice(0, m.index).trim() : tcpRest
-      const cond = m ? m[0].trim() : null
-      if (['content', 'inspect-delay'].includes(tcpType)) d.tcp_response.push({ type: tcpType, action, condition: cond })
-      else d.extra_lines.push(line)
-    }
-    else if (k === 'use_backend') {
-      const parts = rest.split(/\s+/, 2)
-      d.use_backends.push({ backend: parts[0], condition: parts[1] || null })
-    }
-    else if (k === 'default_backend') d.default_backend = rest.split(/\s+/)[0]
-    else if (k === 'stick-table') d.stick_table = parseStickTable(rest)
-    else if (k === 'stick') {
-      const parts = rest.split(/\s+/, 3)
-      if (parts.length) {
-        const action = parts[0].toLowerCase()
-        const valid = ['store-request', 'match', 'on', 'store-response']
-        if (valid.includes(action) && parts.length >= 2) {
-          const expr = parts[1]
-          let extra = parts.length > 2 ? parts[2] : ''
-          let table = null
-          const tm = extra.match(/table\s+(\S+)/)
-          if (tm) {
-            table = tm[1]
-            extra = extra.slice(0, tm.index).trim() + ' ' + extra.slice(tm.index + tm[0].length).trim()
-            extra = extra.trim()
-          }
-          const cond = extra || null
-          d.stick_rules.push({ action, expression: expr, table, condition: cond })
-        } else d.extra_lines.push(line)
-      } else d.extra_lines.push(line)
-    }
-    else if (k === 'cookie') {
-      const c = parseCookie(rest)
-      if (c) d.cookie = c
-      else d.extra_lines.push(line)
-    }
-    else if (k === 'compression') {
-      const [sub, sv] = kv(rest)
-      const sl = sub.toLowerCase()
-      if (sl === 'algo') d._comp_algo = sv
-      else if (sl === 'type') {
-        if (!d._comp_types) d._comp_types = []
-        sv.split(/\s+/).forEach(t => d._comp_types.push(t))
-      }
-      else if (sl === 'offload') d._comp_offload = true
-      else d.extra_lines.push(line)
-    }
-    else if (k === 'server' && line.split(/\s+/).length >= 3) {
-      const srv = parseServer(line)
-      if (srv) d.servers.push(srv)
-      else d.extra_lines.push(line)
-    }
-    else if (k === 'server-template') {
-      const st = parseServerTemplate(line)
-      if (st) d.server_templates.push(st)
-      else d.extra_lines.push(line)
-    }
-    else if (k === 'server-defaults') d.server_defaults = { params: rest }
-    else if (k === 'http-reuse') d.http_reuse = rest
-    else if (k === 'http-send-name-header') d.http_send_name_header = rest
-    else if (k === 'redirect') d.redirect.push(rest)
-    else if (k === 'source') d.source = rest
-    else if (k === 'ignore-persist' || k === 'ignore_persist') d.ignore_persist.push(rest)
-    else if (k === 'force-persist') d.force_persist.push(rest)
-    else if (k === 'external-check') {
-      const [sub, sv] = kv(rest)
-      if (sub === 'command') d.external_check_command = sv
-      else if (sub === 'path') d.external_check_path = sv
-      else d.extra_lines.push(line)
-    }
-    else if (k === 'errorfile') d.errorfile.push(rest)
-    else if (k === 'errorloc') {
-      if (!d.errorloc) d.errorloc = []
-      d.errorloc.push(rest)
-    }
-    else if (k === 'stats') {
-      const [sub, sv] = kv(rest)
-      if (sub === 'uri') d.stats_uri = sv
-      else if (sub === 'realm') d.stats_realm = sv
-      else if (sub === 'auth') d.stats_auth.push(sv)
-      else if (sub === 'refresh') d.stats_refresh = sv
-      else if (sub === 'admin') d.stats_admin = sv
-      else if (sub === 'show-legends') d.stats_show_legends = true
-      else if (sub === 'show-node') d.stats_show_node = sv
-      else if (sub === 'hide-version') d.stats_hide_version = true
-      else if (sub === 'enable' || sub === 'disable') d.extra_lines.push(line)
-      else d.extra_lines.push(line)
-    }
-    else if (k === 'unique-id-format') d.unique_id_format = rest
-    else if (k === 'unique-id-header') d.unique_id_header = rest
-    else if (k === 'capture') {
-      const [sub, sv] = kv(rest)
-      if (sub === 'request') {
-        if (!d.capture_request_header) d.capture_request_header = []
-        d.capture_request_header.push(sv.replace(/^header\s+/, ''))
-      } else if (sub === 'response') {
-        if (!d.capture_response_header) d.capture_response_header = []
-        d.capture_response_header.push(sv.replace(/^header\s+/, ''))
-      } else d.extra_lines.push(line)
-    }
-    else if (k === 'monitor-uri') d.monitor_uri = rest
-    else if (k === 'monitor') {
-      const [sub, sv] = kv(rest)
-      if (sub === 'fail') { if (!d.monitor_fail) d.monitor_fail = []; d.monitor_fail.push(sv) }
-      else d.extra_lines.push(line)
-    }
-    else if (k === 'random') {
-      const [sub, sv] = kv(rest)
-      if (sub === 'draws') { const n = parseInt(sv); if (!isNaN(n)) d.random_draws = n; else d.extra_lines.push(line) }
-      else d.extra_lines.push(line)
-    }
-    else d.extra_lines.push(line)
+    const handled = PROXY_HANDLERS.some(h => h(k, rest, line, ctx))
+    if (!handled) d.extra_lines.push(line)
   }
 
   d.timeouts = ts
@@ -519,28 +602,62 @@ function parseProxyCommon(lines) {
   return d
 }
 
+// ── Resolvers handlers ──────────────────────────────────────────────────────
+
+function rNameserver(k, rest, line, d) { if (k === 'nameserver') { d.nameservers.push(rest); return true } return false }
+function rResolveRetries(k, rest, line, d) { if (k === 'resolve_retries') { d.resolve_retries = parseIntOr(rest); if (d.resolve_retries == null) d.extra_lines.push(line); return true } return false }
+function rTimeout(k, rest, line, d) {
+  if (k !== 'timeout') return false
+  const [sub, sv] = kv(rest)
+  if (sub === 'resolve') d.timeout_resolve = sv
+  else if (sub === 'retry') d.timeout_retry = sv
+  else d.extra_lines.push(line)
+  return true
+}
+function rHold(k, rest, line, d) {
+  if (k !== 'hold') return false
+  const [sub, sv] = kv(rest)
+  if (sub === 'nx') d.hold_nx = sv
+  else if (sub === 'valid') d.hold_valid = sv
+  else d.extra_lines.push(line)
+  return true
+}
+function rPayloadSize(k, rest, line, d) { if (k === 'accepted_payload_size') { d.accepted_payload_size = parseIntOr(rest); if (d.accepted_payload_size == null) d.extra_lines.push(line); return true } return false }
+
+const RESOLVERS_HANDLERS = [
+  rNameserver, rResolveRetries, rTimeout, rHold, rPayloadSize,
+]
+
+// ── Peers handlers ──────────────────────────────────────────────────────────
+
+function pPeer(k, rest, line, d) { if (k === 'peer') { d.peers.push(rest); return true } return false }
+
+const PEERS_HANDLERS = [pPeer]
+
+// ── Userlist handlers ───────────────────────────────────────────────────────
+
+function uGroup(k, rest, line, d) { if (k === 'group') { d.groups.push(rest); return true } return false }
+function uUser(k, rest, line, d) { if (k === 'user') { d.users.push(rest); return true } return false }
+
+const USERLIST_HANDLERS = [uGroup, uUser]
+
+// ── Program handlers ────────────────────────────────────────────────────────
+
+function pCommand(k, rest, line, d) { if (k === 'command') { d.command = rest; return true } return false }
+function pUser(k, rest, line, d) { if (k === 'user') { d.user = rest; return true } return false }
+function pGroup(k, rest, line, d) { if (k === 'group') { d.group = rest; return true } return false }
+function pOption(k, rest, line, d) { if (k === 'option' && rest.toLowerCase() === 'start-on-reload') { d.option_start_on_reload = true; return true } return false }
+
+const PROGRAM_HANDLERS = [pCommand, pUser, pGroup, pOption]
+
 // ── Auxiliary sections ─────────────────────────────────────────────────────
 
 function parseResolvers(name, lines) {
   const d = { name, nameservers: [], extra_lines: [] }
   for (const line of lines) {
     const [k, rest] = kvLower(line)
-    if (k === 'nameserver') d.nameservers.push(rest)
-    else if (k === 'resolve_retries') { const n = parseInt(rest); if (!isNaN(n)) d.resolve_retries = n; else d.extra_lines.push(line) }
-    else if (k === 'timeout') {
-      const [sub, sv] = kv(rest)
-      if (sub === 'resolve') d.timeout_resolve = sv
-      else if (sub === 'retry') d.timeout_retry = sv
-      else d.extra_lines.push(line)
-    }
-    else if (k === 'hold') {
-      const [sub, sv] = kv(rest)
-      if (sub === 'nx') d.hold_nx = sv
-      else if (sub === 'valid') d.hold_valid = sv
-      else d.extra_lines.push(line)
-    }
-    else if (k === 'accepted_payload_size') { const n = parseInt(rest); if (!isNaN(n)) d.accepted_payload_size = n; else d.extra_lines.push(line) }
-    else d.extra_lines.push(line)
+    const handled = RESOLVERS_HANDLERS.some(h => h(k, rest, line, d))
+    if (!handled) d.extra_lines.push(line)
   }
   return d
 }
@@ -549,8 +666,8 @@ function parsePeers(name, lines) {
   const d = { name, peers: [], extra_lines: [] }
   for (const line of lines) {
     const [k, rest] = kvLower(line)
-    if (k === 'peer') d.peers.push(rest)
-    else d.extra_lines.push(line)
+    const handled = PEERS_HANDLERS.some(h => h(k, rest, line, d))
+    if (!handled) d.extra_lines.push(line)
   }
   return d
 }
@@ -559,9 +676,8 @@ function parseUserlist(name, lines) {
   const d = { name, groups: [], users: [], extra_lines: [] }
   for (const line of lines) {
     const [k, rest] = kvLower(line)
-    if (k === 'group') d.groups.push(rest)
-    else if (k === 'user') d.users.push(rest)
-    else d.extra_lines.push(line)
+    const handled = USERLIST_HANDLERS.some(h => h(k, rest, line, d))
+    if (!handled) d.extra_lines.push(line)
   }
   return d
 }
@@ -570,11 +686,8 @@ function parseProgram(name, lines) {
   const d = { name, option_start_on_reload: false, extra_lines: [] }
   for (const line of lines) {
     const [k, rest] = kvLower(line)
-    if (k === 'command') d.command = rest
-    else if (k === 'user') d.user = rest
-    else if (k === 'group') d.group = rest
-    else if (k === 'option' && rest.toLowerCase() === 'start-on-reload') d.option_start_on_reload = true
-    else d.extra_lines.push(line)
+    const handled = PROGRAM_HANDLERS.some(h => h(k, rest, line, d))
+    if (!handled) d.extra_lines.push(line)
   }
   return d
 }

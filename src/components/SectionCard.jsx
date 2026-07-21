@@ -6,7 +6,7 @@ import {
   Minimize2, Copy, CheckCircle2, XCircle, AlertCircle, Terminal
 } from 'lucide-react'
 import { getVersionData } from '../lib/haproxy-versions.js'
-import { serializeFrontendSection, serializeBackendSection, serializeListenSection } from '../lib/haproxy-serializer.js'
+import { serializeFrontendSection, serializeBackendSection, serializeListenSection, serializeGlobalSection, serializeDefaultsSection } from '../lib/haproxy-serializer.js'
 import { validateConfigText } from '../lib/haproxy-validator.js'
 import { getOptionExplanation } from '../lib/haproxy-explanations.js'
 import InfoButton from './InfoButton'
@@ -22,6 +22,8 @@ const TYPE_BADGE = {
   frontend: 'badge-fe',
   backend:  'badge-be',
   listen:   'badge-ls',
+  global:   'badge-gl',
+  defaults: 'badge-df',
 }
 
 const BALANCE_OPTIONS_BASE = [
@@ -44,6 +46,8 @@ const TAB_VISIBILITY = {
   frontend: ['overview', 'acls', 'httprules', 'timeouts', 'options'],
   backend:  ['overview', 'acls', 'httprules', 'health', 'persistence', 'timeouts', 'options'],
   listen:   ['overview', 'acls', 'httprules', 'health', 'persistence', 'timeouts', 'options'],
+  global:   ['overview', 'options'],
+  defaults: ['overview', 'timeouts', 'options'],
 }
 
 function OptionsList({ options = [], onChange, feat }) {
@@ -195,7 +199,179 @@ function EditorPanel({ type, section, onUpdate, visibleTabs, activeTab, setActiv
         style={expanded ? { flex: 1 } : { minHeight: minContentH }}
       >
 
-        {activeTab === 'overview' && (
+        {activeTab === 'overview' && type === 'global' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div>
+                  <label className="label">maxconn</label>
+                  <input className="input-mono w-full" type="number" min="0"
+                    placeholder="—"
+                    value={section.maxconn ?? ''}
+                    onChange={e => onUpdate({ ...section, maxconn: e.target.value ? parseInt(e.target.value) : null })}/>
+                </div>
+                <div>
+                  <label className="label">nbthread</label>
+                  <input className="input-mono w-full" type="number" min="0"
+                    placeholder="—"
+                    value={section.nbthread ?? ''}
+                    onChange={e => onUpdate({ ...section, nbthread: e.target.value ? parseInt(e.target.value) : null })}/>
+                </div>
+                <div>
+                  <label className="label">nbproc</label>
+                  <input className="input-mono w-full" type="number" min="0"
+                    placeholder="—"
+                    value={section.nbproc ?? ''}
+                    onChange={e => onUpdate({ ...section, nbproc: e.target.value ? parseInt(e.target.value) : null })}/>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="label">user</label>
+                  <input className="input-mono w-full"
+                    value={section.user || ''}
+                    onChange={e => onUpdate({ ...section, user: e.target.value || undefined })}/>
+                </div>
+                <div>
+                  <label className="label">group</label>
+                  <input className="input-mono w-full"
+                    value={section.group || ''}
+                    onChange={e => onUpdate({ ...section, group: e.target.value || undefined })}/>
+                </div>
+                <div>
+                  <label className="label">chroot</label>
+                  <input className="input-mono w-full"
+                    value={section.chroot || ''}
+                    onChange={e => onUpdate({ ...section, chroot: e.target.value || undefined })}/>
+                </div>
+                <div>
+                  <label className="label">pidfile</label>
+                  <input className="input-mono w-full"
+                    value={section.pidfile || ''}
+                    onChange={e => onUpdate({ ...section, pidfile: e.target.value || undefined })}/>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label">description</label>
+                <input className="input-mono w-full"
+                  value={section.description || ''}
+                  onChange={e => onUpdate({ ...section, description: e.target.value || undefined })}/>
+              </div>
+              <div>
+                <label className="label">node</label>
+                <input className="input-mono w-full"
+                  value={section.node || ''}
+                  onChange={e => onUpdate({ ...section, node: e.target.value || undefined })}/>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Log directives <span className="text-slate-300 dark:text-slate-500 font-normal">(one per line)</span>
+              </h4>
+              <textarea className="input-mono w-full min-h-[56px] resize-y text-xs font-mono"
+                placeholder={"/dev/log local0\n172.17.0.1:514"}
+                value={(section.log || []).join('\n')}
+                onChange={e => onUpdate({ ...section, log: e.target.value.split('\n').filter(l => l.trim()) })}/>
+            </div>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                <input type="checkbox" checked={!!section.daemon}
+                  onChange={e => onUpdate({ ...section, daemon: e.target.checked })}/>
+                daemon
+              </label>
+              <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                <input type="checkbox" checked={!!section.master_worker}
+                  onChange={e => onUpdate({ ...section, master_worker: e.target.checked })}/>
+                master-worker
+              </label>
+            </div>
+            <ExtraLines
+              extra={section.extra_lines || []}
+              onChange={extra_lines => onUpdate({ ...section, extra_lines })}
+            />
+          </div>
+        )}
+
+        {activeTab === 'overview' && type === 'defaults' && (
+          <div className="space-y-4">
+            <div>
+              <label className="label">Name</label>
+              <input className="input-mono w-full max-w-xs"
+                value={section.name || ''}
+                onChange={e => onUpdate({ ...section, name: e.target.value || null })}/>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div>
+                  <label className="label">Mode</label>
+                  <select className="input text-sm w-full"
+                    value={section.mode || ''}
+                    onChange={e => onUpdate({ ...section, mode: e.target.value || undefined })}>
+                    <option value="">— none —</option>
+                    <option value="http">http</option>
+                    <option value="tcp">tcp</option>
+                    <option value="health">health</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Balance</label>
+                  <select className="input text-sm w-full"
+                    value={section.balance || ''}
+                    onChange={e => onUpdate({ ...section, balance: e.target.value || undefined })}>
+                    {BALANCE_OPTIONS_BASE.filter(b => !b || feat.balance.has(b)).map(b => (
+                      <option key={b} value={b}>{b || '— none —'}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="label">maxconn</label>
+                  <input className="input-mono w-full" type="number" min="0"
+                    placeholder="—"
+                    value={section.maxconn ?? ''}
+                    onChange={e => onUpdate({ ...section, maxconn: e.target.value ? parseInt(e.target.value) : null })}/>
+                </div>
+                <div>
+                  <label className="label">retries</label>
+                  <input className="input-mono w-full" type="number" min="0"
+                    placeholder="—"
+                    value={section.retries ?? ''}
+                    onChange={e => onUpdate({ ...section, retries: e.target.value ? parseInt(e.target.value) : null })}/>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Log directives <span className="text-slate-300 dark:text-slate-500 font-normal">(one per line)</span>
+              </h4>
+              <textarea className="input-mono w-full min-h-[56px] resize-y text-xs font-mono"
+                placeholder={"global\n/var/log/haproxy.log local0"}
+                value={(section.log || []).join('\n')}
+                onChange={e => onUpdate({ ...section, log: e.target.value.split('\n').filter(l => l.trim()) })}/>
+            </div>
+            <div>
+              <label className="label">http-reuse</label>
+              <select className="input text-sm w-full max-w-xs"
+                value={section.http_reuse || ''}
+                onChange={e => onUpdate({ ...section, http_reuse: e.target.value || null })}>
+                <option value="">— none —</option>
+                <option value="never">never</option>
+                <option value="safe">safe</option>
+                <option value="aggressive">aggressive</option>
+                <option value="always">always</option>
+              </select>
+            </div>
+            <ExtraLines
+              extra={section.extra_lines || []}
+              onChange={extra_lines => onUpdate({ ...section, extra_lines })}
+            />
+          </div>
+        )}
+
+        {activeTab === 'overview' && type !== 'global' && type !== 'defaults' && (
           <div className="space-y-4">
             <div>
               <label className="label">Name</label>
@@ -362,10 +538,18 @@ function SectionCard({ type, section, onUpdate, onRemove, onDuplicate, haVersion
   const visibleTabs = TABS.filter(t => (TAB_VISIBILITY[type] || []).includes(t.id))
 
   const validateSection = () => {
-    const serializer = type === 'frontend' ? serializeFrontendSection
-      : type === 'backend' ? serializeBackendSection
-      : serializeListenSection
-    const text = `global\n    daemon\ndefaults\n    mode http\n\n${serializer(section)}`
+    let text
+    if (type === 'global') {
+      text = serializeGlobalSection(section)
+    } else if (type === 'defaults') {
+      const name = section.name ? ` ${section.name}` : ''
+      text = `defaults${name}\n    mode http\n\nfrontend _val\n    bind *:80\n    default_backend _val\n\nbackend _val\n    mode http\n    server _val 127.0.0.1:80\n`
+    } else {
+      const serializer = type === 'frontend' ? serializeFrontendSection
+        : type === 'backend' ? serializeBackendSection
+        : serializeListenSection
+      text = `global\n    daemon\ndefaults\n    mode http\n\n${serializer(section)}`
+    }
     setValidating(true)
     const result = validateConfigText(text, haVersion)
     setValidationResult(result)

@@ -146,6 +146,15 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
 
   const updateSection = useCallback((type, idx, updated) => {
     if (!config) return
+    if (type === 'global') {
+      setConfig({ ...config, global_section: updated }); if (setDirty) setDirty(true)
+      return
+    }
+    if (type === 'defaults') {
+      const arr = [...(config.defaults || [])]; arr[idx] = updated
+      setConfig({ ...config, defaults: arr }); if (setDirty) setDirty(true)
+      return
+    }
     const key = `${type}s`
     const arr = [...(config[key] || [])]; arr[idx] = updated
     setConfig({ ...config, [key]: arr }); if (setDirty) setDirty(true)
@@ -187,9 +196,24 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
 
   const removeSection = useCallback((type, idx) => {
     if (!config) return
+    if (type === 'defaults') {
+      const arr = [...(config.defaults || [])]; arr.splice(idx, 1)
+      setConfig({ ...config, defaults: arr }); if (setDirty) setDirty(true)
+      return
+    }
     const key = `${type}s`
     const arr = [...(config[key] || [])]; arr.splice(idx, 1)
     setConfig({ ...config, [key]: arr }); if (setDirty) setDirty(true)
+  }, [config, setDirty])
+
+  const addDefaults = useCallback(() => {
+    if (!config) return
+    const n = (config.defaults || []).length + 1
+    const def = {
+      name: `defaults_${n}`, log: [], options: [], errorfile: [], errorloc: [],
+      errorloc302: [], stats_auth: [], extra_lines: [], timeouts: {},
+    }
+    setConfig({ ...config, defaults: [...(config.defaults || []), def] }); if (setDirty) setDirty(true)
   }, [config, setDirty])
 
   const matchFilter = (s) => !sectionFilter || (s.name || '').toLowerCase().includes(sectionFilter.toLowerCase())
@@ -375,36 +399,15 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 gap-3">
+                <SectionGroup label="Global & Defaults" icon={Settings} color="text-slate-500" count={(config.global_section ? 1 : 0) + (config.defaults?.length || 0)} onAdd={() => addDefaults()}>
                   {config.global_section && (
-                    <div className="card p-4">
-                      <div className="flex items-center gap-2 mb-3"><span className="badge badge-gl">global</span></div>
-                      <dl className="text-xs font-mono space-y-1 text-slate-500">
-                        {config.global_section?.maxconn && <div><span className="text-slate-700">maxconn</span> {config.global_section.maxconn}</div>}
-                        {config.global_section?.nbthread && <div><span className="text-slate-700">nbthread</span> {config.global_section.nbthread}</div>}
-                        {config.global_section?.user   && <div><span className="text-slate-700">user</span> {config.global_section.user}</div>}
-                        {config.global_section?.daemon && <div className="text-slate-700">daemon</div>}
-                        {config.global_section?.log?.slice(0,2).map((l,i) => <div key={i}><span className="text-slate-700">log</span> {l}</div>)}
-                      </dl>
-                    </div>
+                    <SectionCard key="global" type="global" section={config.global_section} onUpdate={u => updateSection('global', 0, u)} haVersion={haVersion}/>
                   )}
                   {(config.defaults || []).map((def, di) => (
-                    <div key={di} className="card p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="badge badge-df">defaults</span>
-                        {def.name && <span className="text-xs font-mono text-slate-500">{def.name}</span>}
-                      </div>
-                      <dl className="text-xs font-mono space-y-1 text-slate-500">
-                        {def.mode && <div><span className="text-slate-700">mode</span> {def.mode}</div>}
-                        {def.timeouts?.connect && <div><span className="text-slate-700">timeout connect</span> {def.timeouts.connect}</div>}
-                        {def.timeouts?.client  && <div><span className="text-slate-700">timeout client</span>  {def.timeouts.client}</div>}
-                        {def.timeouts?.server  && <div><span className="text-slate-700">timeout server</span>  {def.timeouts.server}</div>}
-                        {def.retries != null   && <div><span className="text-slate-700">retries</span> {def.retries}</div>}
-                        {(def.options||[]).slice(0,3).map((o,i) => <div key={i}><span className="text-slate-700">option</span> {o}</div>)}
-                      </dl>
-                    </div>
+                    <SectionCard key={`def-${di}`} type="defaults" section={def} onUpdate={u=>updateSection('defaults',di,u)} onRemove={()=>removeSection('defaults',di)} haVersion={haVersion}/>
                   ))}
-                </div>
+                  {!config.global_section && !config.defaults?.length && <EmptySection label="No global or defaults sections"/>}
+                </SectionGroup>
                 <SectionGroup label="Frontends" icon={Globe} color="text-blue-600" count={filteredFrontends.length} onAdd={() => addSection('frontend')}>
                   {filteredFrontends.map((fe,i) => <SectionCard key={`fe-${fe._origIdx}`} type="frontend" section={fe} onUpdate={u=>updateSection('frontend',fe._origIdx,u)} onRemove={()=>removeSection('frontend',fe._origIdx)} onDuplicate={()=>duplicateSection('frontend',fe._origIdx)} haVersion={haVersion}/>)}
                   {!filteredFrontends.length && <EmptySection label="No frontends — click Add"/>}

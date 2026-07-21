@@ -24,6 +24,7 @@ Editor visual de configuración de HAProxy — sitio estático 100% client-side.
 - **Undo/Redo** — historial de cambios (Ctrl+Z / Ctrl+Shift+Z)
 - **Validación por sección** — botón Validate en cada modal para validar la sección individual contra la versión HAProxy seleccionada
 - **Auto-validate** — Al cambiar versión HAProxy se re-ejecuta validación automáticamente
+- **Secciones editables global/defaults** — edición visual completa de la sección `global` (maxconn, nbthread, user, group, daemon, log, etc.) y múltiples secciones `defaults` (mode, balance, timeouts, options) desde el editor visual
 - **GitHub Pages** — deploy automatizado via GitHub Actions
 
 ## Uso

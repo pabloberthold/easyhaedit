@@ -38,7 +38,7 @@ export default function InfoButton({ explanation, title }) {
   return (
     <>
       <button ref={btnRef}
-        className="opacity-0 group-hover:opacity-100 text-slate-300 dark:text-slate-600 hover:text-brand-500 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-full w-4 h-4 flex items-center justify-center text-[10px] leading-none shrink-0 transition-colors"
+        className="opacity-30 hover:opacity-100 text-slate-400 dark:text-slate-500 hover:text-brand-500 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-full w-4 h-4 flex items-center justify-center text-[10px] leading-none shrink-0 transition-colors"
         onClick={(e) => { e.stopPropagation(); setOpen(o => !o) }}
         title={title || 'Explicar esta regla'}
       >ⓘ</button>

@@ -47,7 +47,7 @@ function ServerRow({ row, onUpdate, onRemove, feat }) {
   }
 
   return (
-    <div className="border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 overflow-hidden">
+    <div className="border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 overflow-hidden group">
       <div className="flex items-center gap-2 px-3 py-2">
         <button onClick={() => setExpanded(e => !e)}
           className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 shrink-0">

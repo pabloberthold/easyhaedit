@@ -384,7 +384,7 @@ function SectionCard({ type, section, onUpdate, onRemove, onDuplicate, haVersion
 
   return (
     <>
-      <div className={`card overflow-hidden transition-shadow ${expanded ? 'ring-2 ring-brand-400 ring-offset-2' : ''}`}>
+      <div className={`card overflow-hidden transition-shadow ${expanded ? 'ring-2 ring-brand-400 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-800' : ''}`}>
 
         <button
           onClick={() => setExpanded(x => !x)}

@@ -38,7 +38,8 @@ backend web_backend
     server web01 10.0.0.1:80 check
 `
 
-const APP_VERSION = '1.4.0'
+import pkg from '../package.json'
+const APP_VERSION = pkg.version
 const LOCAL_SESSION_KEY = 'easyhaedit_local_cfg'
 
 function Notification({ notif }) {

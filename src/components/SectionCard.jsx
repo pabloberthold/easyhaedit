@@ -83,15 +83,18 @@ function OptionsList({ options = [], onChange, feat }) {
         <summary className="cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 font-medium">Available options for HAProxy {feat._version}</summary>
         <div className="mt-1 flex flex-wrap gap-1 max-h-80 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded p-1.5 bg-white dark:bg-slate-700">
           {availableOptions.map(opt => (
-            <button key={opt}
-              className={`text-[11px] font-mono px-2 py-0.5 rounded transition-colors ${
-                options.includes(opt)
-                  ? 'bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 cursor-default'
-                  : 'bg-slate-50 dark:bg-slate-600 text-slate-500 dark:text-slate-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 hover:text-brand-600 dark:hover:text-brand-300'
-              }`}
-              onClick={() => { if (!options.includes(opt)) add(opt) }}>
-              {opt}
-            </button>
+            <div key={opt} className="flex items-center gap-0.5">
+              <button
+                className={`text-[11px] font-mono px-2 py-0.5 rounded transition-colors ${
+                  options.includes(opt)
+                    ? 'bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 cursor-default'
+                    : 'bg-slate-50 dark:bg-slate-600 text-slate-500 dark:text-slate-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 hover:text-brand-600 dark:hover:text-brand-300'
+                }`}
+                onClick={() => { if (!options.includes(opt)) add(opt) }}>
+                {opt}
+              </button>
+              <InfoButton explanation={getOptionExplanation(opt)}/>
+            </div>
           ))}
         </div>
       </details>

@@ -1,4 +1,4 @@
-# EasyHAEdit
+# EasyHAEdit <small>v2.2.0</small>
 
 Editor visual de configuración de HAProxy — sitio estático 100% client-side.
 
@@ -60,6 +60,7 @@ src/
 │   ├── PersistenceEditor.jsx  # Cookie, stick-table
 │   ├── TimeoutsEditor.jsx     # Timeouts
 │   ├── FlowDiagram.jsx        # Diagrama de flujo SVG
+│   ├── InfoButton.jsx         # Tooltip contextual con explicación de directivas
 │   └── ValidationPanel.jsx    # Panel de resultados de validación global
 ├── App.jsx
 └── main.jsx

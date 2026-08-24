@@ -712,6 +712,7 @@ function SectionCard({ type, section, onUpdate, onRemove, onDuplicate, haVersion
 
 export default memo(SectionCard, (prev, next) =>
   prev.type === next.type &&
+  prev.section === next.section &&
   prev.onUpdate === next.onUpdate &&
   prev.onRemove === next.onRemove &&
   prev.onDuplicate === next.onDuplicate &&

@@ -138,7 +138,10 @@ function ConfigEditor({ rawCfg, setRawCfg, config, setConfig, notify, dirty, set
   }
 
   const handleDownload = () => {
-    const blob = new Blob([rawCfg], { type: 'text/plain' })
+    // Serializar desde el estado actual del editor visual, no desde rawCfg
+    // (rawCfg queda desactualizado si el usuario editó en Visual sin pasar por ⟶ Raw)
+    const text = config ? serializeConfig(config) : rawCfg
+    const blob = new Blob([text], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a'); a.href = url; a.download = 'haproxy.cfg'; a.click()
     URL.revokeObjectURL(url)
